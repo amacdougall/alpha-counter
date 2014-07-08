@@ -1,0 +1,9 @@
+# Clojure artifacts
+.lein-repl-history
+.nrepl-port
+.repl
+out
+target
+
+# vim swapfiles
+*.sw[a-p]
