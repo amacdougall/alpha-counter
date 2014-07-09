@@ -5,3 +5,11 @@ body {
   color: #ddd;
   font-family: Helvetica;
 }
+
+.players > div {
+  margin: 10px;
+}
+
+.players .selected {
+  border: medium white solid;
+}
