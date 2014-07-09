@@ -2,8 +2,11 @@
 .lein-repl-history
 .nrepl-port
 .repl
+
+# project build artifacts
 out
 target
+dev-resources/public/js
 
 # vim swapfiles
 *.sw[a-p]
