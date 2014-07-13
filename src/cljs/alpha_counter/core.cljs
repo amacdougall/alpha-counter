@@ -1,6 +1,9 @@
 (ns alpha-counter.core
   (:require [om.core :as om :include-macros true]
-            [om.dom :as dom :include-macros true]))
+            [om.dom :as dom :include-macros true]
+            [cljs.core.async :refer [chan >! <! put!]]
+            [alpha-counter.lib.async :as async])
+  (:require-macros [cljs.core.async.macros :refer [go go-loop]]))
 
 (enable-console-print!)
 
