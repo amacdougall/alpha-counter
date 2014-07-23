@@ -1,7 +1,7 @@
 (ns alpha-counter.core
   (:require [om.core :as om :include-macros true]
             [om.dom :as dom :include-macros true]
-            [cljs.core.async :refer [chan >! <! put!]]
+            [cljs.core.async :refer [chan >! <! alts! put! timeout close!]]
             [alpha-counter.lib.async :as async])
   (:require-macros [cljs.core.async.macros :refer [go go-loop]]))
 
@@ -69,6 +69,7 @@
                            :disabled (some empty? [p1 p2])}
             "Start!"))))))
 
+;; Health bar view. Expects props {:player p, :select-player fn}.
 (defn health-view [props owner]
   (reify
     om/IRender
@@ -81,7 +82,6 @@
             (dom/div #js {:className "damage"} "")
             (dom/div #js {:className "bar"} "")
             (dom/div #js {:className "number"} (:health player))))))))
-
 
 (defn life-counter-view [app owner]
   (reify
@@ -114,3 +114,55 @@
 
 (om/root main-view app-state
   {:target (. js/document (getElementById "main"))})
+
+; scratch
+
+; (def hp-in (chan))
+; (def hp (trickle hp-in 50))
+; (def combo (running-total hp 5000))
+; 
+; (def output-test
+;   (go (loop []
+;         (when-let [v (<! combo)]
+;           (do
+;             (.log js/console v)
+;             (recur))))))
+; 
+; (doseq [n [2 3 5 8 13]]
+;   (put! hp-in n))
+
+
+;; Returns a channel which takes values from the input channel, and decomposes
+;; them into a steady stream of 1s. Useful for making a damage counter go up
+;; steadily instead of in chunks.
+; TODO: make a HP decrease version of this; should be pretty easy
+(defn trickle [in ms]
+  (let [out (chan)]
+    (go (loop [total 0]
+          (if (= 0 total)
+            ; await new value; set it as total
+            (recur (<! in))
+            ; await new value, or emit 1 and decrement total every tick
+            (let [[v ch] (alts! [in (timeout ms)])]
+              (if (= ch in)
+                (recur (+ total v))
+                (do
+                  (>! out 1)
+                  (recur (dec total))))))))
+    out))
+
+;; Returns a channel which takes values from the input channel, and receives a
+;; running total. If the ms timeout expires without receiving another value,
+;; receives the special value :timeout.
+(defn running-total [in ms]
+  (let [out (chan)]
+    (go (loop [total 0]
+          (let [[v ch] (alts! [in (timeout ms)])]
+            (if (= ch in)
+              (do
+                (>! out (+ total v))
+                (recur (+ total v)))
+              (do
+                (>! out :timeout)
+                (recur 0))))))
+    out))
