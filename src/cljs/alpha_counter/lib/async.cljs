@@ -175,7 +175,7 @@
      :control control}))
 
 ;; Given a seq of channels, waits until each channel has received a value, and
-;; then returns a vec of each value.
+;; then returns a vec of each value. Good for synchronizing events.
 (defn barrier [cs]
   (go (loop [cs (seq cs) result []]
         (if cs
@@ -189,94 +189,3 @@
           (>! out (<! (barrier cs)))
           (recur)))
     out))
-
-
-;; Given an input channel and a delay in milliseconds, returns a throttled
-;; output channel. Use the full signature, [in msecs out control], to provide a
-;; control channel where any value resets the throttle.
-;; NOTE: This function is used in the implementation of throttle; I guess the *
-;; means it's a piece of the implementation.
-; TODO: Actually understand what the hell is going on with this implementation.
-(defn throttle*
-  ([in msecs]
-    (throttle* in msecs (chan)))
-  ([in msecs out]
-    (throttle* in msecs out (chan)))
-  ([in msecs out control]
-    (go
-      (loop [state ::init, last nil, cs [in control]]
-        (let [[_ _ sync] cs] ;; when cs has only two items, sync will be nil
-          (let [[v sc] (alts! cs)]
-            (condp = sc
-              ;; if value comes from input channel, check state
-              in (condp = state
-                   ;; init state: place value in output, start throttling
-                   ::init (do
-                            (>! out v)
-                            (>! out [::throttle v])
-                            ;; recur with sync channel which dies after msecs
-                            (recur ::throttling last
-                              (conj cs (timeout msecs))))
-                   ;; throttling state: put value in out, recur [::throttling value cs]
-                   ::throttling (do (>! out v)
-                                  (recur state v cs))) ;; in next loop, (= last v)
-              ;; if value comes from sync channel, push throttled value to out,
-              ;; recur with new timeout ...why would a value come from the sync
-              ;; channel though?
-              sync (if last ;; if most recent value was non-nil...
-                     (do (>! out [::throttle last])
-                       (recur state nil
-                         (conj (pop cs) (timeout msecs)))) ;; recur with new sync timeout
-                     (recur ::init last (pop cs))) ;; else recur [::init last [in control]]
-              ;; if any value comes from control channel, reset to ::init with
-              ;; last=nil and no sync
-              control (recur ::init nil
-                        (if (= (count cs) 3)
-                          (pop cs)
-                          cs)))))))
-    out))
-
-(defn throttle-msg? [x]
-  (and (vector? x)
-       (= (first x) ::throttle)))
-
-(defn throttle
-  ([in msecs] (throttle in msecs (chan)))
-  ([in msecs out]
-    (->> (throttle* in msecs out)
-      (filter #(and (vector? %) (= (first %) ::throttle))) ;; accept only [::throttle _] output
-      (map second)))) ;; get actual value
-
-(defn debounce
-  ([source msecs]
-    (debounce (chan) source msecs))
-  ([out source msecs]
-    (go
-      (loop [state ::init cs [source]]
-        (let [[_ threshold] cs]
-          (let [[v sc] (alts! cs)]
-            (condp = sc
-              source (condp = state
-                       ::init
-                         (do (>! out v)
-                           (recur ::debouncing
-                             (conj cs (timeout msecs))))
-                       ::debouncing
-                         (recur state
-                           (conj (pop cs) (timeout msecs))))
-              threshold (recur ::init (pop cs)))))))
-    out))
-
-(defn run-task [f & args]
-  (let [out (chan)
-        cb  (fn [err & results]
-              (go (if err
-                    (>! out err)
-                    (>! out results))
-                (close! out)))]
-    (apply f (cljs.core/concat args [cb]))
-    out))
-
-(defn task [& args]
-  (fn [] (apply run-task args)))
-
