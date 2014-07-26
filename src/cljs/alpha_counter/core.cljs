@@ -2,19 +2,12 @@
   (:require [om.core :as om :include-macros true]
             [om.dom :as dom :include-macros true]
             [cljs.core.async :refer [chan >! <! alts! put! timeout close!]]
-            [alpha-counter.lib.async :as async])
+            [alpha-counter.lib.async :as async]
+            [alpha-counter.channels :refer [trickle running-total]]
+            [alpha-counter.views.character-select :refer [character-select-view]])
   (:require-macros [cljs.core.async.macros :refer [go go-loop]]))
 
 (enable-console-print!)
-
-(def characters
-  [{:name "Grave" :health 90}
-   {:name "Jaina" :health 85}
-   {:name "Rook" :health 100}
-   {:name "Midori" :health 95}
-   {:name "Setsuki" :health 70}
-   {:name "Valerie" :health 85}])
-
 
 (def app-state
   (atom
@@ -22,16 +15,6 @@
      :players [{} {}]}))
 
 ; helpers
-;; Initializes the player by selecting the character. Sets player health
-;; to the character's max health, and empties player history.
-(defn select-character [player character]
-  (om/transact! player #(assoc % :character character
-                                 :current false
-                                 :health (:health character)
-                                 :history [])))
-
-(defn ready [app]
-  (om/transact! app :ready (constantly true)))
 
 ;; Sets :current to true on the supplied player, false on all others. Can be
 ;; used as a handler as (partial app player).
@@ -45,29 +28,6 @@
       (first (:players app))))
 
 ; views
-(defn character-select-view [app owner]
-  (reify
-    om/IRender
-    (render [_]
-      ; TODO: format this better? Split it up? I'm sure there's something
-      ; helpful in the colossal core library.
-      (let [p1 (-> app :players first)
-            p2 (-> app :players second)
-            icons (fn [player]
-                    (mapv (fn [c]
-                            (dom/button
-                              #js {:onClick #(select-character player c)}
-                              (:name c)))
-                          characters))]
-        (dom/div nil
-          (dom/h1 nil "Character Select")
-          (dom/h2 nil "Player One")
-          (apply dom/div nil (icons p1))
-          (dom/h2 nil "Player Two")
-          (apply dom/div nil (icons p2))
-          (dom/button #js {:onClick #(ready app)
-                           :disabled (some empty? [p1 p2])}
-            "Start!"))))))
 
 ;; Health bar view. Expects props {:player p, :select-player fn}.
 (defn health-view [props owner]
@@ -130,39 +90,3 @@
 ; 
 ; (doseq [n [2 3 5 8 13]]
 ;   (put! hp-in n))
-
-
-;; Returns a channel which takes values from the input channel, and decomposes
-;; them into a steady stream of 1s. Useful for making a damage counter go up
-;; steadily instead of in chunks.
-; TODO: make a HP decrease version of this; should be pretty easy
-(defn trickle [in ms]
-  (let [out (chan)]
-    (go (loop [total 0]
-          (if (= 0 total)
-            ; await new value; set it as total
-            (recur (<! in))
-            ; await new value, or emit 1 and decrement total every tick
-            (let [[v ch] (alts! [in (timeout ms)])]
-              (if (= ch in)
-                (recur (+ total v))
-                (do
-                  (>! out 1)
-                  (recur (dec total))))))))
-    out))
-
-;; Returns a channel which takes values from the input channel, and receives a
-;; running total. If the ms timeout expires without receiving another value,
-;; receives the special value :timeout.
-(defn running-total [in ms]
-  (let [out (chan)]
-    (go (loop [total 0]
-          (let [[v ch] (alts! [in (timeout ms)])]
-            (if (= ch in)
-              (do
-                (>! out (+ total v))
-                (recur (+ total v)))
-              (do
-                (>! out :timeout)
-                (recur 0))))))
-    out))
