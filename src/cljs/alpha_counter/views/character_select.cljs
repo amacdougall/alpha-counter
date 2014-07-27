@@ -14,7 +14,7 @@
 
 ;; Sets the app ready.
 (defn ready [app]
-  (om/transact! app :ready (constantly true)))
+  (om/update! app [:ready] true))
 
 ;; Initializes the player by selecting the character. Sets player health
 ;; to the character's max health, and empties player history.
