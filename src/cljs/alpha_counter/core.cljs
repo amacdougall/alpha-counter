@@ -9,7 +9,7 @@
 (def app-state
   (atom
     {:ready false ; when true, displays the main life counter
-     :players [{} {}]}))
+     :players [{:id :player-one} {:id :player-two}]}))
 
 (defn main-view [app owner]
   (dom/div nil

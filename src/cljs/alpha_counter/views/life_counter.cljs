@@ -24,25 +24,11 @@
   (or (first (remove :current (:players app)))
       (second (:players app))))
 
-(defn- damage [app n]
-  ; TODO: I wouldn't give this code to a dog to compile.
-  (let [apply-damage (fn [p]
-                       ; is there an assoc-if or something? This is still mad ugly.
-                       (if (= p (get-opponent app))
-                         (assoc p :health (- (:health p) n))
-                         p))]
-    ; useful to use (om/transact app :players (fn [players] ...? I actually
-    ; just want to update the health of a specific player anyway, but I have
-    ; to rewrite the players map to get that to happen to the app... no mutable
-    ; state. This kills mainly because life-counter-view only gets an app cursor.
-    ; Lightbulb moment: maybe I can re-render it based on the current player?
-    ; Or render just the damage buttons based on the current player? It could be
-    ; really handy if the damage buttons were a view of their own.
-    (om/transact! app (fn [app]
-                        (assoc app :players (mapv apply-damage (:players app)))))))
+(defn- damage [player n]
+  (om/transact! player :health (fn [health] (- health n))))
 
-(defn- heal [app n]
-  (om/transact! app #(assoc % :health (+ (:health %) n))))
+(defn- heal [player n]
+  (om/transact! player :health (fn [health] (+ health n))))
 
 ;; Health bar view. Expects props {:player p, :select-player fn}.
 (defn- health-view [props owner]
@@ -62,31 +48,33 @@
   (reify
     om/IInitState
     (init-state [_]
-      (let [hits (chan)
-            combo (running-total hits combo-timeout)]
-        {:hits hits, :combo combo}))
+      (let [hit-channels [{:player (-> app :players first)
+                           :opponent (-> app :players second)
+                           :channel (chan)}
+                          {:player (-> app :players second)
+                           :opponent (-> app :players first)
+                           :channel (chan)}]
+            ->combo-channel #(assoc % :channel (running-total (:channel %) combo-timeout))
+            combo-channels (mapv ->combo-channel hit-channels)]
+        {:hit-channels hit-channels, :combo-channels combo-channels}))
     om/IWillMount
     (will-mount [_]
-      (let [hits (om/get-state owner :hits)
-            combo (om/get-state owner :combo)
-            damage (partial damage app)
-            heal (partial heal app)]
-        ; display running total from combo channel on screen;
-        ; add grand total to opponent damage or self healing
-        (go-loop []
-          (let [[k v] (<! combo)]
-            (condp = k
-              :running-total
-              (.log js/console "running total: %d" v)
-              :grand-total
-              (if (> v 0)
-                (do
-                  (.log js/console "dealing %d damage" v)
-                  (damage v))
-                (heal v))))
-          (recur))))
+      (let [combo-channels (om/get-state owner :combo-channels)]
+        (doseq [{:keys [player opponent channel]} combo-channels]
+          ; display running total from combo channel on screen;
+          ; add grand total to opponent damage or self healing
+          (go-loop []
+            (let [[k v] (<! channel)]
+              (condp = k
+                :running-total
+                (.log js/console "running total: %d" v)
+                :grand-total
+                (cond
+                  (pos? v) (damage opponent v)
+                  (neg? v) (heal player v))))
+            (recur)))))
     om/IRenderState
-    (render-state [this {:keys [hits combo] :as state}]
+    (render-state [this {:keys [hit-channels _] :as state}]
       (dom/div nil
         ; player health bars
         (apply dom/div #js {:className "players"}
@@ -96,9 +84,19 @@
                      :select-player (partial select-player app p)})
                   (:players app))))
         ; combo damage buttons
-        (apply dom/div nil
-          (map (fn [n]
-                 (dom/button
-                   #js {:onClick #(put! hits n)}
-                   n))
-               (range 1 21)))))))
+        ; NOTE: checking player ids instead of doing straight equality on
+        ; players, because the cursor values are different -- even though it
+        ; totally works later when we call the damage function on a player
+        ; cursor stored in a channel hash. Weird stuff. I assume it's related
+        ; to the render lifecycle? Since this render is prompted by player
+        ; select, you'd think the :current value of both players would be up to
+        ; date in all cursors, though.
+        (let [for-player (fn [{:keys [player channel]}]
+                           (= (:id player) (:id (get-current-player app))))
+              hits (-> (filter for-player hit-channels) first :channel)]
+          (apply dom/div nil
+            (map (fn [n]
+                   (dom/button
+                     #js {:onClick #(put! hits n)}
+                     n))
+                 (range 1 21))))))))
