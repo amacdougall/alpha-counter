@@ -24,11 +24,15 @@
   (or (first (remove :current (:players app)))
       (second (:players app))))
 
+;; Subtracts n health from the player. If n is negative, this will heal the
+;; player, but only up to the maximum health of the player's character.
+; NOTE: We implement healing... with a damage function. Food for thought.
 (defn- damage [player n]
-  (om/transact! player :health (fn [health] (- health n))))
-
-(defn- heal [player n]
-  (om/transact! player :health (fn [health] (+ health n))))
+  (om/transact! player (fn [player]
+                         (let [health (:health player)
+                               max-health (-> player :character :health)]
+                           (assoc player :health (min (- health n)
+                                                      max-health))))))
 
 ;; Health bar view. Expects props {:player p, :select-player fn}.
 (defn- health-view [props owner]
@@ -44,18 +48,25 @@
             (dom/div #js {:className "bar"} "")
             (dom/div #js {:className "number"} (:health player))))))))
 
+(defn- init-hit-channels [app]
+  [{:player (-> app :players first)
+    :opponent (-> app :players second)
+    :channel (chan)}
+   {:player (-> app :players second)
+    :opponent (-> app :players first)
+    :channel (chan)}])
+
+(defn- init-combo-channels [hit-channels]
+  (mapv (fn [{:keys [channel] :as m}]
+          (assoc m :channel (running-total channel combo-timeout)))
+        hit-channels))
+
 (defn life-counter-view [app owner]
   (reify
     om/IInitState
     (init-state [_]
-      (let [hit-channels [{:player (-> app :players first)
-                           :opponent (-> app :players second)
-                           :channel (chan)}
-                          {:player (-> app :players second)
-                           :opponent (-> app :players first)
-                           :channel (chan)}]
-            ->combo-channel #(assoc % :channel (running-total (:channel %) combo-timeout))
-            combo-channels (mapv ->combo-channel hit-channels)]
+      (let [hit-channels (init-hit-channels app)
+            combo-channels (init-combo-channels hit-channels)]
         {:hit-channels hit-channels, :combo-channels combo-channels}))
     om/IWillMount
     (will-mount [_]
@@ -71,7 +82,7 @@
                 :grand-total
                 (cond
                   (pos? v) (damage opponent v)
-                  (neg? v) (heal player v))))
+                  (neg? v) (damage player v)))) ; negative damage is healing
             (recur)))))
     om/IRenderState
     (render-state [this {:keys [hit-channels _] :as state}]
@@ -98,5 +109,7 @@
             (map (fn [n]
                    (dom/button
                      #js {:onClick #(put! hits n)}
-                     n))
-                 (range 1 21))))))))
+                     ; negative damage should be displayed as "+n". Maybe this
+                     ; is weird? I'll think about it later.
+                     (if (pos? n) n (str "+" (Math/abs n)))))
+                 (sort (concat [-4] (range 1 21))))))))))
