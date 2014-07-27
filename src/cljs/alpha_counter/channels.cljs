@@ -25,7 +25,7 @@
 
 ;; Returns a channel which takes values from the input channel, and receives
 ;; either running total vecs in the form [:running-total n] or, if the timeout
-;; expires without an input value, a vec in the form [:total n].
+;; expires without an input value, a vec in the form [:grand-total n].
 (defn running-total [in ms]
   (let [out (chan)]
     ; TODO: only wait for timeout if (> total 0)
@@ -36,6 +36,6 @@
                 (>! out [:running-total (+ total v)])
                 (recur (+ total v)))
               (do
-                (>! out [:total total])
+                (>! out [:grand-total total])
                 (recur 0))))))
     out))

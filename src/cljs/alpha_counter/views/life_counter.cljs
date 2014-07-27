@@ -14,12 +14,35 @@
   (let [set-current #(assoc % :current (= % @player))]
     (om/transact! app :players #(mapv set-current %))))
 
-;; Returns the current player, or player one.
+;; Returns a cursor for the current player, or for player one.
 (defn- get-current-player [app]
   (or (first (filter :current (:players app)))
       (first (:players app))))
 
-; views
+;; Returns a cursor for the non-current player, or for player two.
+(defn- get-opponent [app]
+  (or (first (remove :current (:players app)))
+      (second (:players app))))
+
+(defn- damage [app n]
+  ; TODO: I wouldn't give this code to a dog to compile.
+  (let [apply-damage (fn [p]
+                       ; is there an assoc-if or something? This is still mad ugly.
+                       (if (= p (get-opponent app))
+                         (assoc p :health (- (:health p) n))
+                         p))]
+    ; useful to use (om/transact app :players (fn [players] ...? I actually
+    ; just want to update the health of a specific player anyway, but I have
+    ; to rewrite the players map to get that to happen to the app... no mutable
+    ; state. This kills mainly because life-counter-view only gets an app cursor.
+    ; Lightbulb moment: maybe I can re-render it based on the current player?
+    ; Or render just the damage buttons based on the current player? It could be
+    ; really handy if the damage buttons were a view of their own.
+    (om/transact! app (fn [app]
+                        (assoc app :players (mapv apply-damage (:players app)))))))
+
+(defn- heal [app n]
+  (om/transact! app #(assoc % :health (+ (:health %) n))))
 
 ;; Health bar view. Expects props {:player p, :select-player fn}.
 (defn- health-view [props owner]
@@ -39,30 +62,31 @@
   (reify
     om/IInitState
     (init-state [_]
-      (.log js/console "lcv/init-state")
       (let [hits (chan)
             combo (running-total hits combo-timeout)]
         {:hits hits, :combo combo}))
     om/IWillMount
     (will-mount [_]
       (let [hits (om/get-state owner :hits)
-            combo (om/get-state owner :combo)]
+            combo (om/get-state owner :combo)
+            damage (partial damage app)
+            heal (partial heal app)]
         ; display running total from combo channel on screen;
         ; add grand total to opponent damage or self healing
         (go-loop []
-          (let [v (<! combo)]
-            (.log js/console "combo loop got %o" v (pr-str v))
-            (if (= (first v) :running-total)
-              (.log js/console "running total: %d" (second v))
-              (.log js/console "grand total: %d" (second v))))
+          (let [[k v] (<! combo)]
+            (condp = k
+              :running-total
+              (.log js/console "running total: %d" v)
+              :grand-total
+              (if (> v 0)
+                (do
+                  (.log js/console "dealing %d damage" v)
+                  (damage v))
+                (heal v))))
           (recur))))
     om/IRenderState
-    ; TODO: figure out why there is no state when this first runs; You'd think
-    ; that init-state would happen before render-state! That's just obvious.
-    ; ...but that's totally what's happening. I might not understand the
-    ; lifecycle as well as I thought. What's going on?
     (render-state [this {:keys [hits combo] :as state}]
-      (.log js/console "lcv/render-state: state %o %s" state (pr-str state))
       (dom/div nil
         ; player health bars
         (apply dom/div #js {:className "players"}
