@@ -26,18 +26,19 @@
     out))
 
 ;; Returns a channel which takes values from the input channel, and receives
-;; either running total vecs in the form [:running-total n] or, if the timeout
-;; expires without an input value, a vec in the form [:grand-total n].
+;; the running total after each input. For instance, given the values 10, 20,
+;; 30, would receives the values 10, 30, 50. After the timeout, the total is
+;; reset to 0.
 (defn running-total [in ms]
   (let [out (chan)]
-    ; TODO: only wait for timeout if (> total 0)
-    (go (loop [total 0]
-          (let [[v ch] (alts! (if (zero? total) [in] [in (timeout ms)]))]
-            (if (= ch in)
-              (do
-                (>! out [:running-total (+ total v)])
-                (recur (+ total v)))
-              (do
-                (>! out [:grand-total total])
-                (recur 0))))))
+    (go-loop [total 0]
+      ; accumulate incoming value and output running total
+      (let [[n ch] (alts! [in (timeout ms)])]
+        (if (= ch in)
+          ; new value: output running total and await next input
+          (let [new-total (+ total n)]
+            (>! out new-total)
+            (recur new-total))
+          ; timeout: reset
+          (recur 0))))
     out))
