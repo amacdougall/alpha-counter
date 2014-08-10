@@ -1,11 +1,21 @@
 (ns alpha-counter.views.life-counter
   (:require [om.core :as om :include-macros true]
             [om.dom :as dom :include-macros true]
-            [alpha-counter.channels :refer [running-total trickle]]
-            [cljs.core.async :refer [>! <! chan put!]])
+            [alpha-counter.channels :refer [running-total delayed-total trickle]]
+            [cljs.core.async :refer [>! <! chan put! mult tap]])
   (:require-macros [cljs.core.async.macros :refer [go go-loop]]))
 
-;; Time before combo is considered complete, in ms.
+;; Time between damage running total upticks; that is, the running total of
+;; combo damage will increase by 1 after this many ms. To go from
+;; 5 damage to 15 damage would take (* damage-change-speed 10) ms.
+(def damage-change-speed 25)
+
+;; As with damage-trickle-speed, but for health alteration. If a player
+;; goes from 50 health to 45, it will take (* health-change-speed 5) ms.
+(def health-change-speed 50)
+
+;; Time before combo is considered complete, in ms. After the timeout, damage
+;; will be applied to the player.
 (def combo-timeout 3000)
 
 ;; Sets :current to true on the supplied player, false on all others. Can be
@@ -48,17 +58,45 @@
             (dom/div #js {:className "bar"} "")
             (dom/div #js {:className "number"} (:health player))))))))
 
+;; Returns a vec of hashes {:player :opponent :channel :mult}, where the
+;; :channel value is the input channel of incoming hits, and the :mult value is
+;; a mult which interested channels may tap to receive hit data.
 (defn- init-hit-channels [app]
-  [{:player (-> app :players first)
-    :opponent (-> app :players second)
-    :channel (chan)}
-   {:player (-> app :players second)
-    :opponent (-> app :players first)
-    :channel (chan)}])
+  (let [p1-hits (chan)
+        p2-hits (chan)]
+    [{:player (-> app :players first)
+      :opponent (-> app :players second)
+      :channel p1-hits
+      :mult (mult p1-hits)}
+     {:player (-> app :players second)
+      :opponent (-> app :players first)
+      :channel p2-hits
+      :mult (mult p2-hits)}]))
 
-(defn- init-combo-channels [hit-channels]
-  (mapv (fn [{:keys [channel] :as m}]
-          (assoc m :channel (running-total channel combo-timeout)))
+;; Given a vec of hit channel hashes, returns a vec of running damage total
+;; channel hashes {:player :opponent :channel}. Values from these channels will
+;; be set as the running total of the current combo.
+(defn- init-damage-channels [hit-channels]
+  (mapv (fn [{:keys [mult] :as m}]
+          (-> m
+            (dissoc :mult)
+            (assoc :channel (-> (tap mult (chan))
+                              (trickle damage-change-speed)
+                              (running-total combo-timeout)))))
+        hit-channels))
+
+;; Given a vec of hit channel hashes, returns a vec of combo damage total
+;; channels. Values from these channels will be applied as damage to the
+;; opponent or healing to the player.
+(defn- init-total-channels [hit-channels]
+  (mapv (fn [{:keys [mult] :as m}]
+          (-> m
+            (dissoc :mult)
+            ; input to this channel will be held until combo-timeout completes;
+            ; then the grand total will be trickled as a stream of 1s.
+            (assoc :channel (-> (tap mult (chan))
+                              (delayed-total combo-timeout)
+                              (trickle health-change-speed)))))
         hit-channels))
 
 (defn life-counter-view [app owner]
@@ -66,23 +104,28 @@
     om/IInitState
     (init-state [_]
       (let [hit-channels (init-hit-channels app)
-            combo-channels (init-combo-channels hit-channels)]
-        {:hit-channels hit-channels, :combo-channels combo-channels}))
+            damage-channels (init-damage-channels hit-channels)
+            total-channels (init-total-channels hit-channels)]
+        {:hit-channels hit-channels
+         :damage-channels damage-channels
+         :total-channels total-channels}))
     om/IWillMount
     (will-mount [_]
-      (let [combo-channels (om/get-state owner :combo-channels)]
-        (doseq [{:keys [player opponent channel]} combo-channels]
-          ; display running total from combo channel on screen;
-          ; add grand total to opponent damage or self healing
+      (let [damage-channels (om/get-state owner :damage-channels)
+            total-channels (om/get-state owner :total-channels)]
+        (doseq [{:keys [player opponent channel]} damage-channels]
+          ; display running total from damage channel on screen
           (go-loop []
-            (let [[k v] (<! channel)]
-              (condp = k
-                :running-total
-                (.log js/console "running total: %d" v)
-                :grand-total
-                (cond
-                  (pos? v) (damage opponent v)
-                  (neg? v) (damage player v)))) ; negative damage is healing
+            ; TODO: actually display running combo damage
+            (.log js/console "combo running total: %d" (<! channel))
+            (recur)))
+        (doseq [{:keys [player opponent channel]} total-channels]
+          ; apply totals as damage/healing
+          (go-loop []
+            (let [v (<! channel)]
+              (cond
+                (pos? v) (damage opponent v)
+                (neg? v) (damage player v))) ; negative damage is healing
             (recur)))))
     om/IRenderState
     (render-state [this {:keys [hit-channels _] :as state}]
@@ -102,7 +145,7 @@
         ; to the render lifecycle? Since this render is prompted by player
         ; select, you'd think the :current value of both players would be up to
         ; date in all cursors, though.
-        (let [for-player (fn [{:keys [player channel]}]
+        (let [for-player (fn [{:keys [player]}]
                            (= (:id player) (:id (get-current-player app))))
               hits (-> (filter for-player hit-channels) first :channel)]
           (apply dom/div nil
