@@ -42,3 +42,20 @@
           ; timeout: reset
           (recur 0))))
     out))
+
+;; Returns a channel which, after an ms delay, receives the total of all input
+;; values. After the timeout, the total is reset to 0.
+(defn delayed-total [in ms]
+  (let [out (chan)]
+    (go-loop [total 0]
+      (if (zero? total)
+        ; await new value
+        (recur (<! in))
+        ; accumulate incoming value, or deliver total after timeout
+        (let [[n ch] (alts! [in (timeout ms)])]
+          (if (= ch in)
+            (recur (+ total n))
+            (do
+              (>! out total)
+              (recur 0))))))
+    out))
