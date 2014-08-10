@@ -6,21 +6,23 @@
 
 
 ;; Returns a channel which takes values from the input channel, and decomposes
-;; them into a steady stream of 1s. Useful for making a damage counter go up
+;; them into a steady stream of 1s or -1s. Useful for making a damage counter go up
 ;; steadily instead of in chunks.
 (defn trickle [in ms]
   (let [out (chan)]
     (go (loop [total 0]
-          (if (= 0 total)
+          (if (zero? total)
             ; await new value; set it as total
             (recur (<! in))
-            ; await new value, or emit 1 and decrement total every tick
+            ; await new value, or tick toward 0 by emitting a 1 or -1
             (let [[v ch] (alts! [in (timeout ms)])]
               (if (= ch in)
+                ; new value: add to total and restart timeout
                 (recur (+ total v))
-                (do
-                  (>! out 1)
-                  (recur (dec total))))))))
+                ; timeout: tick toward 0 by incrementing or decrementing
+                (let [n (if (pos? total) 1 -1)]
+                  (>! out n)
+                  (recur (- total n))))))))
     out))
 
 ;; Returns a channel which takes values from the input channel, and receives
