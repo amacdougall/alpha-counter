@@ -120,6 +120,8 @@
 
 (defn character-select-view [app owner]
   (reify
+    om/IDisplayName
+    (display-name [_] "CharacterSelectView")
     om/IRender
     (render [_]
       ; TODO: format this better? Split it up? I'm sure there's something
@@ -147,6 +149,8 @@
 ;; Health bar view. Expects props {:player p, :select-player fn}.
 (defn- health-view [props owner]
   (reify
+    om/IDisplayName
+    (display-name [_] "HealthView")
     om/IRender
     (render [_]
       (let [{:keys [player select-player]} props]
@@ -160,6 +164,8 @@
 
 (defn life-counter-view [app owner]
   (reify
+    om/IDisplayName
+    (display-name [_] "LifeCounterView")
     om/IInitState
     (init-state [_]
       (let [hit-channels (init-hit-channels app)
