@@ -10,3 +10,6 @@ dev-resources/public/js
 
 # vim swapfiles
 *.sw[a-p]
+
+# other artifacts
+.sass-cache
