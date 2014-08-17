@@ -146,16 +146,18 @@
             icons (fn [player]
                     (mapv (fn [c]
                             (dom/button
-                              #js {:onClick #(select-character player c)}
+                              #js {:className "button"
+                                   :onClick #(select-character player c)}
                               (:name c)))
                           characters))]
-        (dom/div nil
+        (dom/div #js {:className "character-select"}
           (dom/h1 nil "Character Select")
           (dom/h2 nil "Player One")
           (apply dom/div nil (icons p1))
           (dom/h2 nil "Player Two")
           (apply dom/div nil (icons p2))
-          (dom/button #js {:onClick #(ready app)
+          (dom/button #js {:className "button"
+                           :onClick #(ready app)
                            :disabled (some empty? [p1 p2])}
             "Start!"))))))
 
@@ -231,7 +233,8 @@
           (apply dom/div nil
             (map (fn [n]
                    (dom/button
-                     #js {:onClick #(put! hits n)}
+                     #js {:className "button"
+                          :onClick #(put! hits n)}
                      ; negative damage should be displayed as "+n". Maybe this
                      ; is weird? I'll think about it later.
                      (if (pos? n) n (str "+" (Math/abs n)))))
@@ -240,12 +243,13 @@
 
 ; Base
 (defn main-view [app owner]
-  (dom/div nil
+  (dom/div #js {:className "content"}
     (if-not (:ready app)
       (om/build character-select-view app)
       (om/build life-counter-view app))))
 ; NOTE: gotta om/build each thing individually if we want to run init-state; we
-; can't just call (desired-view app owner).
+; can't just call (desired-view app owner). This is what we want, anyway, because
+; we want to apply a different classname to each component.
 
 (om/root main-view app-state
   {:target (. js/document (getElementById "main"))})
