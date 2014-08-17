@@ -11,11 +11,26 @@
 ;; Vec of {:name :health} hashes representing characters in the game.
 (def characters
   [{:name "Grave" :health 90}
-   {:name "Jaina" :health 85}
-   {:name "Rook" :health 100}
    {:name "Midori" :health 95}
+   {:name "Rook" :health 100}
+   {:name "Valerie" :health 85}
+   {:name "Lum" :health 90}
+   {:name "Jaina" :health 85}
    {:name "Setsuki" :health 70}
-   {:name "Valerie" :health 85}])
+   {:name "DeGrey" :health 90}
+   {:name "Geiger" :health 90}
+   {:name "Argagarg" :health 85}
+   {:name "Quince" :health 90}
+   {:name "Troq" :health 95}
+   {:name "Menelker" :health 70}
+   {:name "Gloria" :health 70}
+   {:name "Vendetta" :health 85}
+   {:name "Onimaru" :health 90}
+   {:name "Bal-Bas-Beta" :health 80}
+   {:name "Persephone" :health 80}
+   {:name "Gwen" :health 85}
+   {:name "Zane" :health 85}])
+
 
 ;; Time between damage running total upticks; that is, the running total of
 ;; combo damage will increase by 1 after this many ms. To go from
