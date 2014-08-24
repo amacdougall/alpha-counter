@@ -2,6 +2,7 @@
   (:require [om.core :as om :include-macros true]
             [om.dom :as dom :include-macros true]
             [alpha-counter.channels :refer [running-total delayed-total trickle]]
+            [clojure.string :as string]
             [cljs.core.async :refer [>! <! chan put! mult tap]])
   (:require-macros [cljs.core.async.macros :refer [go go-loop]]))
 
@@ -51,6 +52,11 @@
      :players [{:id :player-one} {:id :player-two}]}))
 
 ; Utility
+;; Returns the supplied class names, without nils, as a space-separated string
+;; suitable for use as a #js className.
+(defn- classes [& cs]
+  (string/join " " (remove nil? cs)))
+
 ;; Sets :current to true on the supplied player, false on all others. Can be
 ;; used as a handler as (partial app player).
 (defn- select-player [app player]
@@ -145,11 +151,14 @@
             p2 (-> app :players second)
             icons (fn [player]
                     (mapv (fn [c]
-                            (dom/li nil
-                              (dom/button
-                                #js {:className "small button"
-                                     :onClick #(select-character player c)}
-                                (:name c))))
+                            (let [selected (when
+                                             (= (:name c) (-> player :character :name))
+                                             "selected")]
+                              (dom/li nil
+                                (dom/button
+                                  #js {:className (classes "small" "button" selected)
+                                       :onClick #(select-character player c)}
+                                  (:name c)))))
                           characters))]
         (dom/div #js {:className "character-select"}
           (dom/h1 nil "Character Select")
