@@ -145,20 +145,21 @@
             p2 (-> app :players second)
             icons (fn [player]
                     (mapv (fn [c]
-                            (dom/button
-                              #js {:className "button"
-                                   :onClick #(select-character player c)}
-                              (:name c)))
+                            (dom/li nil
+                              (dom/button
+                                #js {:className "small button"
+                                     :onClick #(select-character player c)}
+                                (:name c))))
                           characters))]
         (dom/div #js {:className "character-select"}
           (dom/h1 nil "Character Select")
           (dom/h2 nil "Player One")
-          (apply dom/div nil (icons p1))
+          (apply dom/ul #js {:className "list"} (icons p1))
           (dom/h2 nil "Player Two")
-          (apply dom/div nil (icons p2))
+          (apply dom/ul #js {:className "list"} (icons p2))
           (dom/button #js {:className "button"
                            :onClick #(ready app)
-                           :disabled (some empty? [p1 p2])}
+                           :disabled (some #(nil? (:character %)) [p1 p2])}
             "Start!"))))))
 
 ; Life Counter: health bars, combo damage display, damage buttons
