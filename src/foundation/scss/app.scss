@@ -21,6 +21,14 @@ $block-grid-default-spacing: 0.25rem;
   }
 }
 
+.damage-buttons {
+  @include block-grid(6);
+
+  .button {
+    width: 100%;
+  }
+}
+
 
 // Or selectively include components
 // @import

@@ -8868,3 +8868,44 @@ th.hide-for-touch {
 .character-select .button {
   width: 100%;
 }
+
+/* line 24, ../../../src/foundation/scss/app.scss */
+.damage-buttons {
+  display: block;
+  padding: 0;
+  margin: 0 -0.125rem;
+}
+/* line 172, ../../../src/foundation/bower_components/foundation/scss/foundation/components/_global.scss */
+.damage-buttons:before, .damage-buttons:after {
+  content: " ";
+  display: table;
+}
+/* line 173, ../../../src/foundation/bower_components/foundation/scss/foundation/components/_global.scss */
+.damage-buttons:after {
+  clear: both;
+}
+/* line 50, ../../../src/foundation/bower_components/foundation/scss/foundation/components/_block-grid.scss */
+.damage-buttons > li {
+  display: block;
+  height: auto;
+  float: left;
+  padding: 0 0.125rem 0.25rem;
+}
+/* line 61, ../../../src/foundation/bower_components/foundation/scss/foundation/components/_block-grid.scss */
+.damage-buttons > li {
+  width: 16.66667%;
+  padding: 0 0.125rem 0.25rem;
+  list-style: none;
+}
+/* line 68, ../../../src/foundation/bower_components/foundation/scss/foundation/components/_block-grid.scss */
+.damage-buttons > li:nth-of-type(1n) {
+  clear: none;
+}
+/* line 69, ../../../src/foundation/bower_components/foundation/scss/foundation/components/_block-grid.scss */
+.damage-buttons > li:nth-of-type(6n+1) {
+  clear: both;
+}
+/* line 27, ../../../src/foundation/scss/app.scss */
+.damage-buttons .button {
+  width: 100%;
+}

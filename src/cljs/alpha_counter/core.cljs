@@ -52,8 +52,10 @@
      :players [{:id :player-one} {:id :player-two}]}))
 
 ; Utility
-;; Returns the supplied class names, without nils, as a space-separated string
-;; suitable for use as a #js className.
+;; Returns the supplied string class names, without nils, as a space-separated
+;; string suitable for use as a #js className. Class names may already include
+;; spaces, naturally; (classes "inner button" "selected") will return "inner
+;; button selected".
 (defn- classes [& cs]
   (string/join " " (remove nil? cs)))
 
@@ -139,33 +141,34 @@
                                  :health (:health character)
                                  :history [])))
 
+;; Given a player and a character, builds an element which selects that
+;; character on click.
+(defn- character->icon [player character]
+  (let [selected? (= (:name character) (-> player :character :name))
+        button-classes (classes "small button" (when selected? "selected"))]
+    (dom/li nil
+      (dom/button
+        #js {:className button-classes
+             :onClick #(select-character player character)}
+        (:name character)))))
+
+(defn- player->icons [player]
+  (mapv (partial character->icon player) characters))
+
 (defn character-select-view [app owner]
   (reify
     om/IDisplayName
     (display-name [_] "CharacterSelectView")
     om/IRender
     (render [_]
-      ; TODO: format this better? Split it up? I'm sure there's something
-      ; helpful in the colossal core library.
       (let [p1 (-> app :players first)
-            p2 (-> app :players second)
-            icons (fn [player]
-                    (mapv (fn [c]
-                            (let [selected (when
-                                             (= (:name c) (-> player :character :name))
-                                             "selected")]
-                              (dom/li nil
-                                (dom/button
-                                  #js {:className (classes "small" "button" selected)
-                                       :onClick #(select-character player c)}
-                                  (:name c)))))
-                          characters))]
+            p2 (-> app :players second)]
         (dom/div #js {:className "character-select"}
           (dom/h1 nil "Character Select")
           (dom/h2 nil "Player One")
-          (apply dom/ul #js {:className "list"} (icons p1))
+          (apply dom/ul #js {:className "list"} (player->icons p1))
           (dom/h2 nil "Player Two")
-          (apply dom/ul #js {:className "list"} (icons p2))
+          (apply dom/ul #js {:className "list"} (player->icons p2))
           (dom/button #js {:className "button"
                            :onClick #(ready app)
                            :disabled (some #(nil? (:character %)) [p1 p2])}
@@ -221,7 +224,7 @@
             (recur)))))
     om/IRenderState
     (render-state [this {:keys [hit-channels _] :as state}]
-      (dom/div nil
+      (dom/div #js {:className "life-counter"}
         ; player health bars
         (apply dom/div #js {:className "players"}
           (om/build-all health-view
@@ -240,14 +243,15 @@
         (let [for-player (fn [{:keys [player]}]
                            (= (:id player) (:id (get-current-player app))))
               hits (-> (filter for-player hit-channels) first :channel)]
-          (apply dom/div nil
+          (apply dom/ul #js {:className "damage-buttons"}
             (map (fn [n]
-                   (dom/button
-                     #js {:className "button"
-                          :onClick #(put! hits n)}
-                     ; negative damage should be displayed as "+n". Maybe this
-                     ; is weird? I'll think about it later.
-                     (if (pos? n) n (str "+" (Math/abs n)))))
+                   (dom/li nil
+                     (dom/button
+                      #js {:className "small button"
+                           :onClick #(put! hits n)}
+                      ; negative damage should be displayed as "+n". Maybe this
+                      ; is weird? I'll think about it later.
+                      (if (pos? n) n (str "+" (Math/abs n))))))
                  (sort (concat [-4] (range 1 21))))))))))
 
 
