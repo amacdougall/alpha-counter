@@ -3,6 +3,10 @@
 
 $block-grid-default-spacing: 0.25rem;
 
+$health-bar-height: 30px;
+$health-bar-color: yellow;
+$health-bar-damage-color: red;
+
 .content {
   padding: 1rem;
 }
@@ -21,6 +25,30 @@ $block-grid-default-spacing: 0.25rem;
   }
 }
 
+// name, health bar, combo damage readout styles
+.players {
+  @include block-grid(2);
+}
+
+.health-view {
+  display: inline-block;
+  width: 50%;
+}
+
+.health {
+  background-color: $health-bar-color;
+  height: $health-bar-height;
+}
+
+.damage {
+  background-color: $health-bar-damage-color;
+  height: $health-bar-height;
+  margin-top: -($health-bar-height);
+  width: 0%;
+  // width will be set as an element style by Om rendering later
+}
+
+// damage button styles
 .damage-buttons {
   @include block-grid(6);
 

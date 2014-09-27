@@ -175,8 +175,10 @@
             "Start!"))))))
 
 ; Life Counter: health bars, combo damage display, damage buttons
-; TODO: subdivide further
-;; Health bar view. Expects props {:player p, :select-player fn}.
+;; Health bar view. Expects props {:player p, :select-player fn}. Includes
+;; character name, current life as a number, and health and damage bars. The
+;; damage bar increases as the player takes damage, progressively hiding the
+;; health bar.
 (defn- health-view [props owner]
   (reify
     om/IDisplayName
@@ -187,10 +189,10 @@
         (dom/div #js {:className (classes "health-view"
                                           (when (:current player) "selected"))
                       :onClick #(select-player player)}
-          (dom/div nil (-> player :character :name))
+          (dom/div #js {:className "name"} (-> player :character :name))
           (dom/div #js {:className "health-bar"}
-            (dom/div #js {:className "total"} "")
-            (dom/div #js {:className "remaining"} "")
+            (dom/div #js {:className "health"} "")
+            (dom/div #js {:className "damage"} "")
             (dom/div #js {:className "number"} (:health player))))))))
 
 (defn life-counter-view [app owner]
