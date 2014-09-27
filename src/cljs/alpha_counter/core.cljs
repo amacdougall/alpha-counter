@@ -184,12 +184,13 @@
     om/IRender
     (render [_]
       (let [{:keys [player select-player]} props]
-        (dom/div (when (:current player) #js {:className "selected"})
-          (dom/button #js {:onClick #(select-player player)}
-            (-> player :character :name))
-          (dom/div #js {:className "health-display"}
-            (dom/div #js {:className "damage"} "")
-            (dom/div #js {:className "bar"} "")
+        (dom/div #js {:className (classes "health-view"
+                                          (when (:current player) "selected"))
+                      :onClick #(select-player player)}
+          (dom/div nil (-> player :character :name))
+          (dom/div #js {:className "health-bar"}
+            (dom/div #js {:className "total"} "")
+            (dom/div #js {:className "remaining"} "")
             (dom/div #js {:className "number"} (:health player))))))))
 
 (defn life-counter-view [app owner]
