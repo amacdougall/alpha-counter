@@ -38,14 +38,15 @@ $health-bar-damage-color: red;
 .health {
   background-color: $health-bar-color;
   height: $health-bar-height;
+  margin-top: -($health-bar-height);
+  width: 100%;
+  // Om can override this with an element style later
 }
 
+/* This background color is revealed as the health bar shrinks. */
 .damage {
   background-color: $health-bar-damage-color;
   height: $health-bar-height;
-  margin-top: -($health-bar-height);
-  width: 0%;
-  // width will be set as an element style by Om rendering later
 }
 
 // damage button styles

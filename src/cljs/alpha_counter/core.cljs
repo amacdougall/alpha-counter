@@ -175,6 +175,15 @@
             "Start!"))))))
 
 ; Life Counter: health bars, combo damage display, damage buttons
+;; Returns the player's health as a percentage string ending in "%"; e.g. a
+;; player at 35/70 health would return "50%". Useful when calculating damage
+;; bar width.
+(defn- health-percent [player]
+  (let [max-health (:health (:character player))
+        health (:health player)]
+    (-> (/ health max-health) (* 100) Math/ceil (str "%"))))
+
+
 ;; Health bar view. Expects props {:player p, :select-player fn}. Includes
 ;; character name, current life as a number, and health and damage bars. The
 ;; damage bar increases as the player takes damage, progressively hiding the
@@ -191,8 +200,9 @@
                       :onClick #(select-player player)}
           (dom/div #js {:className "name"} (-> player :character :name))
           (dom/div #js {:className "health-bar"}
-            (dom/div #js {:className "health"} "")
             (dom/div #js {:className "damage"} "")
+            (dom/div #js {:className "health"
+                          :style #js {:width (health-percent player)}} "")
             (dom/div #js {:className "number"} (:health player))))))))
 
 (defn life-counter-view [app owner]
