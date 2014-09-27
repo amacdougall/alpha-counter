@@ -7,6 +7,7 @@
 out
 target
 dev-resources/public/js
+dev-resources/public/css
 
 # vim swapfiles
 *.sw[a-p]
