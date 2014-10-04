@@ -30,21 +30,26 @@ $health-bar-damage-color: red;
   @include block-grid(2);
 }
 
-.health-view {
-  display: inline-block;
-  width: 50%;
+.health-view:first-child {
+  .health-view__name, .health-view__number {
+    text-align: left;
+  }
 }
 
-.health {
+.health-view__name, .health-view__number {
+  text-align: right;
+}
+
+.health-view__health {
   background-color: $health-bar-color;
   height: $health-bar-height;
   margin-top: -($health-bar-height);
-  width: 100%;
-  // Om can override this with an element style later
+  width: 100%; // Om will override with an element style later
+  // if it should be right-aligned, Om will apply left-margin
 }
 
 /* This background color is revealed as the health bar shrinks. */
-.damage {
+.health-view__damage {
   background-color: $health-bar-damage-color;
   height: $health-bar-height;
 }

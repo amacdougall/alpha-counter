@@ -175,14 +175,23 @@
             "Start!"))))))
 
 ; Life Counter: health bars, combo damage display, damage buttons
-;; Returns the player's health as a percentage string ending in "%"; e.g. a
-;; player at 35/70 health would return "50%". Useful when calculating damage
-;; bar width.
-(defn- health-percent [player]
+;; Returns the player's health as a float ratio, between 1.0 and 0.0.
+(defn- health-ratio [player]
   (let [max-health (:health (:character player))
         health (:health player)]
-    (-> (/ health max-health) (* 100) Math/ceil (str "%"))))
+    (/ health max-health)))
 
+;; Returns the player's health as a percentage string ending in "%", rounded
+;; up; e.g. a player at 50/80 health would return "63%". Useful when
+;; calculating damage bar width.
+(defn- health-percent [player]
+  (-> (health-ratio player) (* 100) Math/ceil (str "%")))
+
+;; Returns the damage the player has taken as a percentage string ending in
+;; "%", rounded down; e.g. a player at 50/80 health would return "37%". Useful
+;; when calculating damage bar margin for right alignment.
+(defn- damage-percent [player]
+  (-> (- 1 (health-ratio player)) (* 100) Math/floor (str "%")))
 
 ;; Health bar view. Expects props {:player p, :select-player fn}. Includes
 ;; character name, current life as a number, and health and damage bars. The
@@ -194,16 +203,22 @@
     (display-name [_] "HealthView")
     om/IRender
     (render [_]
-      (let [{:keys [player select-player]} props]
-        (dom/div #js {:className (classes "health-view"
-                                          (when (:current player) "selected"))
+      (let [{:keys [player select-player]} props
+            ; if this is the left-hand player, the health bar should be aligned
+            ; right as it shrinks; I'd prefer to do this in CSS, I just don't
+            ; know how. TODO: learn how. Maybe dwab or Rachel can help.
+            left (= (:id player) :player-one)
+            health-width ["width" (health-percent player)]
+            health-offset (when left ["marginLeft" (damage-percent player)])
+            health-style (apply js-obj (concat health-width health-offset))]
+        (dom/li #js {:className (classes "health-view"
+                                         (when (:current player) "selected"))
                       :onClick #(select-player player)}
-          (dom/div #js {:className "name"} (-> player :character :name))
-          (dom/div #js {:className "health-bar"}
-            (dom/div #js {:className "damage"} "")
-            (dom/div #js {:className "health"
-                          :style #js {:width (health-percent player)}} "")
-            (dom/div #js {:className "number"} (:health player))))))))
+          (dom/div #js {:className "health-view__name"} (-> player :character :name))
+          (dom/div #js {:className "health-view__health-bar"}
+            (dom/div #js {:className "health-view__damage"} "")
+            (dom/div #js {:className "health-view__health" :style health-style} "")
+            (dom/div #js {:className "health-view__number"} (:health player))))))))
 
 (defn life-counter-view [app owner]
   (reify
@@ -239,7 +254,7 @@
     (render-state [this {:keys [hit-channels _] :as state}]
       (dom/div #js {:className "life-counter"}
         ; player health bars
-        (apply dom/div #js {:className "players"}
+        (apply dom/ul #js {:className "players"}
           (om/build-all health-view
             (mapv (fn [p] ; build health-view arguments per player
                     {:player p
