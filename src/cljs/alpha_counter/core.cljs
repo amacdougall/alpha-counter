@@ -219,6 +219,37 @@
             (dom/div #js {:className "health-view__health" :style health-style} "")
             (dom/div #js {:className "health-view__number"} (:health player))))))))
 
+;; List of damage buttons. Expects props {:app :hit-channels}. Automatically
+;; sets up buttons to send hits to the appropriate channels.
+(defn- damage-buttons-view [props owner]
+  (reify
+    om/IDisplayName
+    (display-name [_] "DamageButtonsView")
+    om/IRender
+    ; combo damage buttons
+    ; NOTE: checking player ids instead of doing straight equality on
+    ; players, because the cursor values are different -- even though it
+    ; totally works later when we call the damage function on a player
+    ; cursor stored in a channel hash. Weird stuff. I assume it's related
+    ; to the render lifecycle? Since this render is prompted by player
+    ; select, you'd think the :current value of both players would be up to
+    ; date in all cursors, though.
+    (render [_]
+      (let [{:keys [app hit-channels]} props
+            for-player (fn [{:keys [player]}]
+                         (= (:id player) (:id (get-current-player app))))
+            hits (-> (filter for-player hit-channels) first :channel)]
+        (apply dom/ul #js {:className "damage-buttons"}
+          (map (fn [n]
+                 (dom/li nil
+                   (dom/button
+                    #js {:className "small button"
+                         :onClick #(put! hits n)}
+                    ; negative damage should be displayed as "+n". Maybe this
+                    ; is weird? I'll think about it later.
+                    (if (pos? n) n (str "+" (Math/abs n))))))
+               (sort (concat [-4] (range 1 21)))))))))
+
 ;; Life counter view. Includes the combo damage readout and a health-view for
 ;; each player. Its local state includes channels which manage the combo damage
 ;; running total and the total damage.
@@ -262,28 +293,7 @@
                     {:player p
                      :select-player (partial select-player app p)})
                   (:players app))))
-        ; TODO: split combo damage buttons into their own component
-        ; combo damage buttons
-        ; NOTE: checking player ids instead of doing straight equality on
-        ; players, because the cursor values are different -- even though it
-        ; totally works later when we call the damage function on a player
-        ; cursor stored in a channel hash. Weird stuff. I assume it's related
-        ; to the render lifecycle? Since this render is prompted by player
-        ; select, you'd think the :current value of both players would be up to
-        ; date in all cursors, though.
-        (let [for-player (fn [{:keys [player]}]
-                           (= (:id player) (:id (get-current-player app))))
-              hits (-> (filter for-player hit-channels) first :channel)]
-          (apply dom/ul #js {:className "damage-buttons"}
-            (map (fn [n]
-                   (dom/li nil
-                     (dom/button
-                      #js {:className "small button"
-                           :onClick #(put! hits n)}
-                      ; negative damage should be displayed as "+n". Maybe this
-                      ; is weird? I'll think about it later.
-                      (if (pos? n) n (str "+" (Math/abs n))))))
-                 (sort (concat [-4] (range 1 21))))))))))
+        (om/build damage-buttons-view {:app app :hit-channels hit-channels})))))
 
 
 ; Base
