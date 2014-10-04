@@ -40,7 +40,7 @@
 
 ;; As with damage-trickle-speed, but for health alteration. If a player
 ;; goes from 50 health to 45, it will take (* health-change-speed 5) ms.
-(def health-change-speed 50)
+(def health-change-speed 40)
 
 ;; Time before combo is considered complete, in ms. After the timeout, damage
 ;; will be applied to the player.
@@ -211,7 +211,7 @@
             health-offset (when left ["marginLeft" (damage-percent player)])
             health-style (apply js-obj (concat health-width health-offset))]
         (dom/li #js {:className (classes "health-view"
-                                         (when (:current player) "selected"))
+                                         (when (:current player) "current"))
                       :onClick #(select-player player)}
           (dom/div #js {:className "health-view__name"} (-> player :character :name))
           (dom/div #js {:className "health-view__health-bar"}
