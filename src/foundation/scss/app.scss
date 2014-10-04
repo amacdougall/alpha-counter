@@ -30,6 +30,10 @@ $health-bar-damage-color: red;
   @include block-grid(2);
 }
 
+.health-view.selected {
+  font-weight: bold;
+}
+
 .health-view:first-child {
   .health-view__name, .health-view__number {
     text-align: left;

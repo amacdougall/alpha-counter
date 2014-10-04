@@ -49,7 +49,7 @@
 (def app-state
   (atom
     {:ready false ; when true, displays the main life counter
-     :players [{:id :player-one} {:id :player-two}]}))
+     :players [{:id :player-one, :current true} {:id :player-two}]}))
 
 ; Utility
 ;; Returns the supplied string class names, without nils, as a space-separated
@@ -137,7 +137,6 @@
 ;; to the character's max health, and empties player history.
 (defn- select-character [player character]
   (om/transact! player #(assoc % :character character
-                                 :current false
                                  :health (:health character)
                                  :history [])))
 
@@ -195,8 +194,8 @@
 
 ;; Health bar view. Expects props {:player p, :select-player fn}. Includes
 ;; character name, current life as a number, and health and damage bars. The
-;; damage bar increases as the player takes damage, progressively hiding the
-;; health bar.
+;; health bar shrinks as the player takes damage, progressively revealing the
+;; damage bar.
 (defn- health-view [props owner]
   (reify
     om/IDisplayName
@@ -220,6 +219,9 @@
             (dom/div #js {:className "health-view__health" :style health-style} "")
             (dom/div #js {:className "health-view__number"} (:health player))))))))
 
+;; Life counter view. Includes the combo damage readout and a health-view for
+;; each player. Its local state includes channels which manage the combo damage
+;; running total and the total damage.
 (defn life-counter-view [app owner]
   (reify
     om/IDisplayName
@@ -260,6 +262,7 @@
                     {:player p
                      :select-player (partial select-player app p)})
                   (:players app))))
+        ; TODO: split combo damage buttons into their own component
         ; combo damage buttons
         ; NOTE: checking player ids instead of doing straight equality on
         ; players, because the cursor values are different -- even though it
