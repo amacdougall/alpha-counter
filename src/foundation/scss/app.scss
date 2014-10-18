@@ -58,6 +58,33 @@ $health-bar-damage-color: red;
   height: $health-bar-height;
 }
 
+.combo-view {
+  display: table; // to center the text
+  width: 4rem;
+  height: 4rem;
+
+  position: absolute;
+  left: 50%;
+  margin-left: -2rem;
+
+  background-color: green;
+
+  &.active {
+    background-color: red;
+  }
+}
+
+.combo-view__text {
+  // if parent is not display: table, none of this works
+  display: table-cell;
+  text-align: center;
+  vertical-align: middle;
+
+  color: white;
+  font-size: 26px;
+  font-weight: bold;
+}
+
 // damage button styles
 .damage-buttons {
   @include block-grid(6);

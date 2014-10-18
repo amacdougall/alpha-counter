@@ -255,11 +255,14 @@
 (defn combo-view [running-total owner]
   (reify
     om/IDisplayName
-    (display-name [_] "ComboDamageView")
+    (display-name [_] "ComboView")
     om/IRender
     (render [_]
-      (dom/div nil (str "Running total: "
-                        (if (= running-total :reset) "none" running-total))))))
+      (let [idle (#{0 :reset} running-total) ; false if combo is in progress
+            text (if idle "VS" running-total)]
+        (dom/div #js {:className (classes "combo-view" (when-not idle "active"))}
+          (dom/div #js {:className "combo-view__text"} text))))))
+
 
 ;; Life counter view. Includes the combo damage readout and a health-view for
 ;; each player. Its local state includes channels which manage the combo damage
