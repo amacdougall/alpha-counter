@@ -250,6 +250,17 @@
                     (if (pos? n) n (str "+" (Math/abs n))))))
                (sort (concat [-4] (range 1 21)))))))))
 
+;; When a combo is in progress, display the running total; otherwise, displays
+;; the "VS" symbol between the two health-view panes.
+(defn combo-view [running-total owner]
+  (reify
+    om/IDisplayName
+    (display-name [_] "ComboDamageView")
+    om/IRender
+    (render [_]
+      (dom/div nil (str "Running total: "
+                        (if (= running-total :reset) "none" running-total))))))
+
 ;; Life counter view. Includes the combo damage readout and a health-view for
 ;; each player. Its local state includes channels which manage the combo damage
 ;; running total and the total damage.
@@ -264,16 +275,16 @@
             total-channels (init-total-channels hit-channels)]
         {:hit-channels hit-channels
          :damage-channels damage-channels
-         :total-channels total-channels}))
+         :total-channels total-channels
+         :running-total 0}))
     om/IWillMount
     (will-mount [_]
       (let [damage-channels (om/get-state owner :damage-channels)
             total-channels (om/get-state owner :total-channels)]
         (doseq [{:keys [player opponent channel]} damage-channels]
-          ; display running total from damage channel on screen
+          ; update combo running total in component state
           (go-loop []
-            ; TODO: actually display running combo damage
-            (.log js/console "combo running total: %d" (<! channel))
+            (om/set-state! owner :running-total (<! channel))
             (recur)))
         (doseq [{:keys [player opponent channel]} total-channels]
           ; apply totals as damage/healing
@@ -284,8 +295,10 @@
                 (neg? v) (damage player v))) ; negative damage is healing
             (recur)))))
     om/IRenderState
-    (render-state [this {:keys [hit-channels _] :as state}]
+    (render-state [_ {:keys [hit-channels running-total] :as state}]
       (dom/div #js {:className "life-counter"}
+        ; combo total
+        (om/build combo-view running-total)
         ; player health bars
         (apply dom/ul #js {:className "players"}
           (om/build-all health-view
@@ -293,6 +306,7 @@
                     {:player p
                      :select-player (partial select-player app p)})
                   (:players app))))
+        ; damage buttons
         (om/build damage-buttons-view {:app app :hit-channels hit-channels})))))
 
 
