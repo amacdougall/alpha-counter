@@ -24,10 +24,10 @@
                            ["phantomjs" :runner "dev-resources/public/js/alpha_counter.js"]}}}
  :dev [:shared
        {:source-paths ["dev-resources/tools/http" "dev-resources/tools/repl"]
-        :dependencies [[ring "1.2.1"]
-                       [compojure "1.1.6"]
+        :dependencies [[ring "1.3.1"]
+                       [compojure "1.2.0"]
                        [enlive "1.1.4"]]
-        :plugins [[com.cemerick/austin "0.1.3"]]
+        :plugins [[com.cemerick/austin "0.1.5"]]
         :cljsbuild
         {:builds {:alpha-counter
                  {:source-paths ["dev-resources/tools/repl"]

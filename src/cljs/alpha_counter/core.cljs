@@ -298,13 +298,13 @@
 
 ; Base
 (defn main-view [app owner]
-  (dom/div #js {:className "content"}
-    (if-not (:ready app)
-      (om/build character-select-view app)
-      (om/build life-counter-view app))))
-; NOTE: gotta om/build each thing individually if we want to run init-state; we
-; can't just call (desired-view app owner). This is what we want, anyway, because
-; we want to apply a different classname to each component.
+  (reify
+    om/IRender
+    (render [_]
+      (dom/div #js {:className "content"}
+        (if-not (:ready app)
+          (om/build character-select-view app)
+          (om/build life-counter-view app))))))
 
 (om/root main-view app-state
   {:target (. js/document (getElementById "main"))})
