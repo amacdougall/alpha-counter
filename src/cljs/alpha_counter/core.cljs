@@ -296,9 +296,7 @@
           ; apply totals as damage/healing
           (go-loop []
             (let [v (<! channel)]
-              (cond
-                (pos? v) (damage opponent v)
-                (neg? v) (damage player v))) ; negative damage is healing
+              (damage player v))
             (recur)))))
     om/IRenderState
     (render-state [_ {:keys [hit-channels running-total] :as state}]
