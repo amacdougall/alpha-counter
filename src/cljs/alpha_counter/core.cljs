@@ -12,9 +12,9 @@
 ;; Vec of {:name :health} hashes representing characters in the game.
 (def characters
   [{:name "Grave" :health 90}
-   {:name "Midori" :health 95}
+   {:name "Midori" :health 90}
    {:name "Rook" :health 100}
-   {:name "Valerie" :health 85}
+   {:name "Valerie" :health 80}
    {:name "Lum" :health 90}
    {:name "Jaina" :health 85}
    {:name "Setsuki" :health 70}
@@ -22,15 +22,18 @@
    {:name "Geiger" :health 90}
    {:name "Argagarg" :health 85}
    {:name "Quince" :health 90}
-   {:name "Troq" :health 95}
+   {:name "Bal-Bas-Beta" :health 80}
    {:name "Menelker" :health 70}
    {:name "Gloria" :health 70}
-   {:name "Vendetta" :health 85}
+   {:name "Vendetta" :health 75}
    {:name "Onimaru" :health 90}
-   {:name "Bal-Bas-Beta" :health 80}
-   {:name "Persephone" :health 80}
+   {:name "Troq" :health 95}
+   {:name "Persephone" :health 75}
    {:name "Gwen" :health 85}
    {:name "Zane" :health 85}])
+
+;; Every amount of damage which can be dealt in the game. Populates the buttons list.
+(def damage-amounts (sort (concat [-12 -4] (range 1 21) [21 22 29 36 45 50 55])))
 
 
 ;; Time between damage running total upticks; that is, the running total of
@@ -248,7 +251,7 @@
                     ; negative damage should be displayed as "+n". Maybe this
                     ; is weird? I'll think about it later.
                     (if (pos? n) n (str "+" (Math/abs n))))))
-               (sort (concat [-4] (range 1 21)))))))))
+               damage-amounts))))))
 
 ;; When a combo is in progress, display the running total; otherwise, displays
 ;; the "VS" symbol between the two health-view panes.
