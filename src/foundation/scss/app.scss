@@ -22,6 +22,7 @@ $health-bar-damage-color: red;
 
   .button {
     width: 100%;
+    margin-bottom: 0; // ensure symmetrical grid; fits in iPad
   }
 }
 
