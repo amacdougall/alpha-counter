@@ -6,7 +6,8 @@
 # project build artifacts
 out
 target
-dev-resources/public/js
+dev-resources/public/js/*
+!dev-resources/public/js/lib
 dev-resources/public/css
 
 # vim swapfiles
