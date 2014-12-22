@@ -33,7 +33,7 @@
    {:name "Zane" :health 85}])
 
 ;; Every amount of damage which can be dealt in the game. Populates the buttons list.
-(def damage-amounts (sort (concat [-12 -4] (range 1 21) [21 22 29 36 45 50 55])))
+(def damage-amounts (sort (concat [-12 -6 -4] (range 1 21) [21 22 29 36 45 50 55])))
 
 
 ;; Time between damage running total upticks; that is, the running total of
