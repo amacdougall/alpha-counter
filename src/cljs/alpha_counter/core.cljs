@@ -262,8 +262,11 @@
     om/IRender
     (render [_]
       (let [idle (#{0 :reset} running-total) ; false if combo is in progress
-            text (if idle "VS" running-total)]
-        (dom/div #js {:className (classes "combo-view" (when-not idle "active"))}
+            is-healing (neg? running-total) ; yes, negative damage restores health
+            damage-text (str (when is-healing "+") (Math/abs running-total))
+            text (if idle "VS" damage-text)
+            active-state-name (cond is-healing "healing", (not idle) "damage")]
+        (dom/div #js {:className (classes "combo-view" active-state-name)}
           (dom/div #js {:className "combo-view__text"} text))))))
 
 

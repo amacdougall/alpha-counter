@@ -70,8 +70,12 @@ $health-bar-damage-color: red;
 
   background-color: green;
 
-  &.active {
+  &.damage {
     background-color: red;
+  }
+
+  &.healing {
+    background-color: blue;
   }
 }
 
