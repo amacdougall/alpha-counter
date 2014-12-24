@@ -32,7 +32,7 @@
 
              ; Compilation Options
              :compiler
-             {:output-to "dev-resources/public/js/alpha_counter.js"
+             {:output-to "dev-resources/public/js/main/alpha_counter.js"
               :optimizations :advanced
               :pretty-print false}}}})
 ; All other builds are in profiles.clj
