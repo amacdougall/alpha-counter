@@ -30,10 +30,10 @@
         :plugins [[com.cemerick/austin "0.1.5"]]
         :cljsbuild
         {:builds {:alpha-counter
-                 {:source-paths ["dev-resources/tools/repl"]
-                  :compiler
-                  {:optimizations :whitespace
-                   :pretty-print true}}}}
+                  {:source-paths ["dev-resources/tools/repl"]
+                   :compiler
+                   {:optimizations :whitespace
+                    :pretty-print true}}}}
 
         :injections [(require '[ring.server :as http :refer [run]]
                               'cemerick.austin.repls)
@@ -52,8 +52,9 @@
  :advanced [:shared
             {:cljsbuild
              {:builds {:alpha-counter
-                       {:source-paths ["test/cljs"]
-                        :compiler
+                       {:compiler
                         {:optimizations :advanced
-                         :pretty-print false}}}}}]}
+                         :pretty-print false
+                         :preamble ["react/react.min.js"]}}}}}]}
+                         ; contrary to the Om docs, no :externs was needed for me
 

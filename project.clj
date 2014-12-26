@@ -35,4 +35,5 @@
              {:output-to "dev-resources/public/js/main/alpha_counter.js"
               :optimizations :advanced
               :pretty-print false}}}})
-; All other builds are in profiles.clj
+; All other builds are in profiles.clj; but note that if none of those build
+; declarations override this :output-to statement, it will hold true.
