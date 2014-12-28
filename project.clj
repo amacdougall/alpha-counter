@@ -1,5 +1,5 @@
 ;; project.clj and profiles.clj based on github.com/magomimmo/cljs-start.
-(defproject alpha-counter "0.0.1-SNAPSHOT"
+(defproject alpha-counter "0.9.0"
   :description "An Om life counter webapp for Yomi."
   :url "http://www.alanmacdougall.com/alphacounter"
 
