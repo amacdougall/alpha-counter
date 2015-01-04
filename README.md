@@ -29,5 +29,5 @@ bundle exec compass watch src/foundation
 
 ## Deployment
 
-I'm still ironing this part out. I have a simple upload script I can share with
-contributors.
+`deploy.sh` just rsyncs the relevant files to yomicounter.com. If you're a
+project collaborator, I can set you up.
