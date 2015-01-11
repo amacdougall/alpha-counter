@@ -35,7 +35,6 @@
 ;; Every amount of damage which can be dealt in the game. Populates the buttons list.
 (def damage-amounts (sort (concat [-12 -6 -4] (range 1 21) [21 22 29 36 45 50 55])))
 
-
 ;; Time between damage running total upticks; that is, the running total of
 ;; combo damage will increase by 1 after this many ms. To go from
 ;; 5 damage to 15 damage would take (* damage-change-speed 10) ms.
@@ -73,14 +72,8 @@
   (or (first (filter :current (:players app)))
       (first (:players app))))
 
-;; Returns a cursor for the non-current player, or for player two.
-(defn- get-opponent [app]
-  (or (first (remove :current (:players app)))
-      (second (:players app))))
-
 ;; Subtracts n health from the player. If n is negative, this will heal the
 ;; player, but only up to the maximum health of the player's character.
-; NOTE: We implement healing... with a damage function. Food for thought.
 (defn- damage [player n]
   (om/transact! player (fn [player]
                          (let [health (:health player)
@@ -88,25 +81,32 @@
                            (assoc player :health (min (- health n)
                                                       max-health))))))
 
-;; Returns a vec of hashes {:player :opponent :channel :mult}, where the
-;; :channel value is the input channel of incoming hits, and the :mult value is
-;; a mult which interested channels may tap to receive hit data. For
-;; life-counter-view state.
+;; Returns a vec of hashes {:player :channel :mult}, for each player. When a
+;; player is hit, push the damage amount onto :channel. Tap the :mult to
+;; receive hit notifications.
+;;
+;; Clojure Newbie Note™: Providing hit notifications as a mult instead of a
+;; single channel allows us to do unrelated things with the notification
+;; streams, with independent timing. With a single-channel workflow, we would
+;; have to take a hit from the channel, and do multiple actions with it at the
+;; same time. By tapping a mult to generate independent channels, we can read
+;; from different taps at different speeds.
 (defn- init-hit-channels [app]
   (let [p1-hits (chan)
         p2-hits (chan)]
     [{:player (-> app :players first)
-      :opponent (-> app :players second)
       :channel p1-hits
       :mult (mult p1-hits)}
      {:player (-> app :players second)
-      :opponent (-> app :players first)
       :channel p2-hits
       :mult (mult p2-hits)}]))
 
 ;; Given a vec of hit channel hashes, returns a vec of running damage total
-;; channel hashes {:player :opponent :channel}. Values from these channels will
-;; be set as the running total of the current combo. For life-counter-view state.
+;; channel hashes {:player :channel}. Each value on these channels represents
+;; the new running total of the current combo.
+;;
+;; In a two-hit combo dealing 2 and then 3 damage, the values would be 2, 5,
+;; and then, after the combo timeout, :reset.
 (defn- init-damage-channels [hit-channels]
   (mapv (fn [{:keys [mult] :as m}]
           (-> m
@@ -117,8 +117,10 @@
         hit-channels))
 
 ;; Given a vec of hit channel hashes, returns a vec of combo damage total
-;; channels. Values from these channels will be applied as damage to the
-;; opponent or healing to the player. For life-counter-view state.
+;; channels. Each value on these channels should be applied directly as damage.
+;;
+;; In a two-hit combo dealing 2 and then 3 damage, the values would be 1, 1, 1,
+;; 1, 1, beginning only after the combo timeout.
 (defn- init-total-channels [hit-channels]
   (mapv (fn [{:keys [mult] :as m}]
           (-> m
@@ -134,16 +136,14 @@
 (defn ready [app]
   (om/update! app [:ready] true))
 
-
 ; Character Select
-;; Initializes the player by selecting the character. Sets player health
-;; to the character's max health, and empties player history.
+;; Initializes the player by selecting the character. Sets player health to the
+;; character's max health.
 (defn- select-character [player character]
   (om/transact! player #(assoc % :character character
-                                 :health (:health character)
-                                 :history [])))
+                                 :health (:health character))))
 
-;; Given a player and a character, builds an element which selects that
+;; Given a player and a character, returns an element which selects that
 ;; character on click.
 (defn- character->icon [player character]
   (let [selected? (= (:name character) (-> player :character :name))
@@ -154,9 +154,14 @@
              :onClick #(select-character player character)}
         (:name character)))))
 
+;; Given a player, returns a vec of character icon elements which select that
+;; character for that player on click.
 (defn- player->icons [player]
   (mapv (partial character->icon player) characters))
 
+;; Top-level view which displays a character icon grid for each player,
+;; followed by a Ready button. The Ready button is only enabled when both
+;; players have selected a character.
 (defn character-select-view [app owner]
   (reify
     om/IDisplayName
@@ -184,14 +189,14 @@
     (/ health max-health)))
 
 ;; Returns the player's health as a percentage string ending in "%", rounded
-;; up; e.g. a player at 50/80 health would return "63%". Useful when
-;; calculating damage bar width.
+;; up; e.g. a player at 50/80 health would return "63%". Useful when applying
+;; damage bar width in CSS.
 (defn- health-percent [player]
   (-> (health-ratio player) (* 100) Math/ceil (str "%")))
 
 ;; Returns the damage the player has taken as a percentage string ending in
 ;; "%", rounded down; e.g. a player at 50/80 health would return "37%". Useful
-;; when calculating damage bar margin for right alignment.
+;; when applying damage bar margin for right alignment in CSS.
 (defn- damage-percent [player]
   (-> (- 1 (health-ratio player)) (* 100) Math/floor (str "%")))
 
@@ -213,6 +218,7 @@
             health-width ["width" (health-percent player)]
             health-offset (when left ["marginLeft" (damage-percent player)])
             health-style (apply js-obj (concat health-width health-offset))]
+            ; NOTE: (js-obj "a" 1 "b" 2) => {a: 1, b: 2} in JavaScript
         (dom/li #js {:className (classes "health-view"
                                          (when (:current player) "current"))
                       :onClick #(select-player player)}
@@ -237,6 +243,8 @@
     ; to the render lifecycle? Since this render is prompted by player
     ; select, you'd think the :current value of both players would be up to
     ; date in all cursors, though.
+    ;
+    ; TODO: There may yet be a way around this. Try again!
     (render [_]
       (let [{:keys [app hit-channels]} props
             for-player (fn [{:keys [player]}]
@@ -266,9 +274,9 @@
             damage-text (str (when is-healing "+") (Math/abs running-total))
             text (if idle "VS" damage-text)
             active-state-name (cond is-healing "healing", (not idle) "damage")]
+            ; active-state-name is nil if idle
         (dom/div #js {:className (classes "combo-view" active-state-name)}
           (dom/div #js {:className "combo-view__text"} text))))))
-
 
 ;; Life counter view. Includes the combo damage readout and a health-view for
 ;; each player. Its local state includes channels which manage the combo damage
@@ -290,12 +298,12 @@
     (will-mount [_]
       (let [damage-channels (om/get-state owner :damage-channels)
             total-channels (om/get-state owner :total-channels)]
-        (doseq [{:keys [player opponent channel]} damage-channels]
+        (doseq [{:keys [player channel]} damage-channels]
           ; update combo running total in component state
           (go-loop []
             (om/set-state! owner :running-total (<! channel))
             (recur)))
-        (doseq [{:keys [player opponent channel]} total-channels]
+        (doseq [{:keys [player channel]} total-channels]
           ; apply totals as damage/healing
           (go-loop []
             (let [v (<! channel)]
@@ -315,7 +323,6 @@
                   (:players app))))
         ; damage buttons
         (om/build damage-buttons-view {:app app :hit-channels hit-channels})))))
-
 
 ; Base
 (defn main-view [app owner]
