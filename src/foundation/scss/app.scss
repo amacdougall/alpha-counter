@@ -31,6 +31,10 @@ $health-bar-damage-color: red;
   @include block-grid(2);
 }
 
+.health-view {
+  cursor: pointer;
+}
+
 .health-view.current {
   font-weight: bold;
 }
