@@ -17,6 +17,9 @@ To do a production build with vastly smaller filesize:
 lein with-profiles advanced do clean, compile
 ```
 
+Note that the production build will only work with the production version of
+index.html; see Deployment.
+
 ## Compiling CSS
 
 I used a pretty vanilla Foundation install, with Compass. The app-specific
@@ -29,5 +32,14 @@ bundle exec compass watch src/foundation
 
 ## Deployment
 
-`deploy.sh` just rsyncs the relevant files to yomicounter.com. If you're a
-project collaborator, I can set you up.
+`deploy.sh` performs the following steps:
+
+1. Do an advanced compile.
+1. Set dev-resources/public/index.html to the production version.
+1. Rsync the relevant files to the server.
+1. Set dev-resources/public/index.html back to the dev version.
+1. Do a dev compile.
+
+For the rsync to succeed, you must be authorized for SSH on my server. Yes, this
+whole thing is pretty brittle, but I don't expect a lot of collaborators in the
+first place.
