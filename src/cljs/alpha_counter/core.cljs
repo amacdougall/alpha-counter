@@ -3,8 +3,11 @@
             [om.dom :as dom :include-macros true]
             [alpha-counter.channels :refer [running-total delayed-total trickle]]
             [clojure.string :as string]
+            [goog.events :as events]
+            [FastClick] ; foreign lib, appears as js/FastClick
             [cljs.core.async :refer [>! <! chan put! mult tap]])
-  (:require-macros [cljs.core.async.macros :refer [go go-loop]]))
+  (:require-macros [cljs.core.async.macros :refer [go go-loop]])
+  (:import [goog.events EventType]))
 
 (enable-console-print!)
 
@@ -48,9 +51,9 @@
 ;; will be applied to the player.
 (def combo-timeout 3000)
 
-(def app-state
+(defonce app-state
   (atom
-    {:ready false ; when true, displays the main life counter
+    {:characters-selected false ; when true, displays the main life counter
      :players [{:id :player-one, :current true} {:id :player-two}]}))
 
 ; Utility
@@ -134,7 +137,7 @@
 
 ;; Sets the app ready.
 (defn ready [app]
-  (om/update! app [:ready] true))
+  (om/update! app [:characters-selected] true))
 
 ; Character Select
 ;; Initializes the player by selecting the character. Sets player health to the
@@ -330,9 +333,12 @@
     om/IRender
     (render [_]
       (dom/div #js {:className "content"}
-        (if-not (:ready app)
+        (if-not (:characters-selected app)
           (om/build character-select-view app)
           (om/build life-counter-view app))))))
 
-(om/root main-view app-state
-  {:target (. js/document (getElementById "main"))})
+(defn main []
+  (.attach js/FastClick (.-body js/document))
+  (om/root main-view
+    app-state
+    {:target (. js/document (getElementById "app"))}))

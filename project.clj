@@ -1,39 +1,68 @@
-;; project.clj and profiles.clj based on github.com/magomimmo/cljs-start.
-(defproject alpha-counter "0.9.0"
+(defproject alpha-counter "0.9.1"
   :description "An Om life counter webapp for Yomi."
-  :url "http://www.alanmacdougall.com/alphacounter"
+  :url "http://www.yomicounter.com"
+  :license {:name "MIT License"
+            :url "http://opensource.org/licenses/MIT"}
 
-  :min-lein-version "2.3.4"
-
-  ; We need to add src/cljs too, because cljsbuild does not add its
-  ; source-paths to the project source-paths
   :source-paths ["src/clj" "src/cljs"]
 
-  :dependencies [[org.clojure/clojure "1.6.0"]
-                 [org.clojure/clojurescript "0.0-2511"]
+  :dependencies [[org.clojure/clojure "1.7.0-alpha5"]
+                 [org.clojure/clojurescript "0.0-2740" :scope "provided"]
+                 [ring "1.3.1"]
+                 [compojure "1.2.0"]
+                 [enlive "1.1.5"]
+                 [om "0.7.3"]
                  [org.clojure/core.async "0.1.346.0-17112a-alpha"]
-                 [om "0.8.0-beta5"]]
+                 [figwheel "0.1.4-SNAPSHOT"]
+                 [environ "1.0.0"]
+                 [com.cemerick/piggieback "0.1.5"]
+                 [weasel "0.5.0"]
+                 [leiningen "2.5.0"]]
 
-  :plugins [[lein-cljsbuild "1.0.4-SNAPSHOT"]]
+  :plugins [[lein-cljsbuild "1.0.3"]
+            [lein-environ "1.0.0"]]
 
-  :hooks [leiningen.cljsbuild]
+  :min-lein-version "2.5.0"
 
+  :uberjar-name "alpha-counter.jar"
+
+  ; In the preamble/externs, note that the React files come from the Om jar,
+  ; which is automatically added to the classpath. Libraries not provided in a
+  ; CLJS-friendly format are in resources/vendor.
   :cljsbuild
-  {:builds {; This build is only used for including any cljs source
-            ; in the packaged jar when you issue lein jar command and
-            ; any other command that depends on it
-            :alpha-counter
-            {:source-paths ["src/cljs"]
-             ; The :jar true option is not needed to include the CLJS sources
-             ; in the packaged jar. This is because we added the CLJS source
-             ; codebase to the Leiningen :source-paths
+  {:builds
+   {:app
+    {:source-paths ["src/cljs"]
+     :compiler {:output-to     "resources/public/js/app.js"
+                :output-dir    "resources/public/js/out"
+                :source-map    "resources/public/js/out.js.map"
+                :preamble      ["react/react.min.js"]
+                :externs       ["react/externs/react.js"]
+                :foreign-libs  [{:file "resources/vendor/fastclick/fastclick.min.js"
+                                 :provides ["FastClick"]}]
+                :optimizations :none
+                :pretty-print  true}}}}
 
-             ; :jar true
+  :profiles {:dev {:repl-options {:init-ns alpha-counter.server
+                                  :nrepl-middleware [cemerick.piggieback/wrap-cljs-repl]}
 
-             ; Compilation Options
-             :compiler
-             {:output-to "dev-resources/public/js/main/alpha_counter.js"
-              :optimizations :advanced
-              :pretty-print false}}}})
-; All other builds are in profiles.clj; but note that if none of those build
-; declarations override this :output-to statement, it will hold true.
+                   ; TODO: upgrade to 2.3, which might not need piggieback/weasel
+                   :plugins [[lein-figwheel "0.1.4-SNAPSHOT"]]
+
+                   :figwheel {:http-server-root "public"
+                              :port 3449
+                              :css-dirs ["resources/public/css"]}
+
+                   :env {:is-dev true}
+
+                   :cljsbuild {:builds {:app {:source-paths ["env/dev/cljs"]}}}}
+
+             :uberjar {:hooks [leiningen.cljsbuild]
+                       :env {:production true}
+                       :omit-source true
+                       :aot :all
+                       :cljsbuild {:builds {:app
+                                            {:source-paths ["env/prod/cljs"]
+                                             :compiler
+                                             {:optimizations :advanced
+                                              :pretty-print false}}}}}})

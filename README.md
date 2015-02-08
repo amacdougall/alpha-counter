@@ -1,45 +1,91 @@
-# Alpha Counter
+# alpha-counter
 
-A single-page life counter webapp for Yomi, written in ClojureScript using the
-Om library.
+An Om-based life counter for the Yomi fighting card game.
 
-## Compiling ClojureScript
+For now, the rest of the README is just the Chestnut README.
 
-To do a dev build, and recompile on changes:
+## Development
 
-```sh
-lein with-profiles dev do clean, cljsbuild auto alpha-counter
+Start a REPL (in a terminal: `lein repl`, or from Emacs: open a
+clj/cljs file in the project, then do `M-x cider-jack-in`. Make sure
+CIDER is up to date).
+
+In the REPL do
+
+```clojure
+(run)
+(browser-repl)
 ```
 
-To do a production build with vastly smaller filesize:
+The call to `(run)` does two things, it starts the webserver at port
+10555, and also the Figwheel server which takes care of live reloading
+ClojureScript code and CSS. Give them some time to start.
 
-```sh
-lein with-profiles advanced do clean, compile
+Running `(browser-repl)` starts the Weasel REPL server, and drops you
+into a ClojureScript REPL. Evaluating expressions here will only work
+once you've loaded the page, so the browser can connect to Weasel.
+
+When you see the line `Successfully compiled "resources/public/app.js"
+in 21.36 seconds.`, you're ready to go. Browse to
+`http://localhost:10555` and enjoy.
+
+**Attention: It is not longer needed to run `lein figwheel`
+  separately. This is now taken care of behind the scenes**
+
+## Trying it out
+
+If all is well you now have a browser window saying 'Hello Chestnut',
+and a REPL prompt that looks like `cljs.user=>`.
+
+Open `resources/public/css/style.css` and change some styling of the
+H1 element. Notice how it's updated instantly in the browser.
+
+Open `src/cljs/alpha-counter/core.cljs`, and change `dom/h1` to
+`dom/h2`. As soon as you save the file, your browser is updated.
+
+In the REPL, type
+
+```
+(ns alpha-counter.core)
+(swap! app-state assoc :text "Interactivity FTW")
 ```
 
-Note that the production build will only work with the production version of
-index.html; see Deployment.
+Notice again how the browser updates.
 
-## Compiling CSS
+## Deploying to Heroku
 
-I used a pretty vanilla Foundation install, with Compass. The app-specific
-styles are in `src/foundation/scss/app.scss`.
+This assumes you have a
+[Heroku account](https://signup.heroku.com/dc), have installed the
+[Heroku toolbelt](https://toolbelt.heroku.com/), and have done a
+`heroku login` before.
 
+``` sh
+git init
+git add -A
+git commit
+heroku create
+git push heroku master:master
+heroku open
 ```
-bundle install # naturally
-bundle exec compass watch src/foundation
+
+## Running with Foreman
+
+Heroku uses [Foreman](http://ddollar.github.io/foreman/) to run your
+app, which uses the `Procfile` in your repository to figure out which
+server command to run. Heroku also compiles and runs your code with a
+Leiningen "production" profile, instead of "dev". To locally simulate
+what Heroku does you can do:
+
+``` sh
+lein with-profile -dev,+production uberjar && foreman start
 ```
 
-## Deployment
+Now your app is running at
+[http://localhost:5000](http://localhost:5000) in production mode.
 
-`deploy.sh` performs the following steps:
+## License
 
-1. Do an advanced compile.
-1. Set dev-resources/public/index.html to the production version.
-1. Rsync the relevant files to the server.
-1. Set dev-resources/public/index.html back to the dev version.
-1. Do a dev compile.
+Copyright © 2014 FIXME
 
-For the rsync to succeed, you must be authorized for SSH on my server. Yes, this
-whole thing is pretty brittle, but I don't expect a lot of collaborators in the
-first place.
+Distributed under the Eclipse Public License either version 1.0 or (at
+your option) any later version.

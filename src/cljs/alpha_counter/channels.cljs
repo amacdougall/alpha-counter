@@ -4,7 +4,6 @@
 
 (enable-console-print!)
 
-
 ;; Returns a channel which takes values from the input channel, and decomposes
 ;; them into a steady stream of 1s or -1s. Useful for making a damage counter go up
 ;; steadily instead of in chunks.
