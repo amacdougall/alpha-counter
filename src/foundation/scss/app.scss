@@ -1,18 +1,38 @@
 @import "settings";
 @import "foundation";
 
+// NOTE: some defaults are defined in _settings.scss
+
 $block-grid-default-spacing: 0.25rem;
 
+$background-color: #fff0a5;
+
 $health-bar-height: 30px;
-$health-bar-color: yellow;
-$health-bar-damage-color: red;
+$health-bar-color: $warning-color;
+$health-bar-damage-color: $alert-color;
+
+$combo-color-idle: $success-color;
+$combo-color-healing: #2f7289;
+$combo-color-damage: $alert-color;
+
+body {
+  background-color: $background-color;
+  
+  &.night-mode {
+    background-color: scale-color($background-color, $lightness: -92%);
+
+    .health-view__name, .health-view__number {
+      color: white;
+    }
+  }
+}
 
 .content {
   padding: 1rem;
 }
 
 .button.selected {
-  background-color: green;
+  background-color: $success-color;
 }
 
 .character-select {
@@ -72,14 +92,14 @@ $health-bar-damage-color: red;
   left: 50%;
   margin-left: -2rem;
 
-  background-color: green;
+  background-color: $combo-color-idle;
 
   &.damage {
-    background-color: red;
+    background-color: $combo-color-damage;
   }
 
   &.healing {
-    background-color: blue;
+    background-color: $combo-color-healing;
   }
 }
 
