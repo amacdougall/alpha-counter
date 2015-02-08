@@ -1,0 +1,143 @@
+@import "settings";
+@import "foundation";
+
+$block-grid-default-spacing: 0.25rem;
+
+$health-bar-height: 30px;
+$health-bar-color: yellow;
+$health-bar-damage-color: red;
+
+.content {
+  padding: 1rem;
+}
+
+.button.selected {
+  background-color: green;
+}
+
+.character-select {
+  .list {
+    @include block-grid(4);
+  }
+
+  .button {
+    width: 100%;
+    margin-bottom: 0; // ensure symmetrical grid; fits in iPad
+  }
+}
+
+// name, health bar, combo damage readout styles
+.players {
+  @include block-grid(2);
+}
+
+.health-view {
+  cursor: pointer;
+}
+
+.health-view.current {
+  font-weight: bold;
+}
+
+.health-view:first-child {
+  .health-view__name, .health-view__number {
+    text-align: left;
+  }
+}
+
+.health-view__name, .health-view__number {
+  text-align: right;
+}
+
+.health-view__health {
+  background-color: $health-bar-color;
+  height: $health-bar-height;
+  margin-top: -($health-bar-height);
+  width: 100%; // Om will override with an element style later
+  // if it should be right-aligned, Om will apply left-margin
+}
+
+/* This background color is revealed as the health bar shrinks. */
+.health-view__damage {
+  background-color: $health-bar-damage-color;
+  height: $health-bar-height;
+}
+
+.combo-view {
+  display: table; // to center the text
+  width: 4rem;
+  height: 4rem;
+
+  position: absolute;
+  left: 50%;
+  margin-left: -2rem;
+
+  background-color: green;
+
+  &.damage {
+    background-color: red;
+  }
+
+  &.healing {
+    background-color: blue;
+  }
+}
+
+.combo-view__text {
+  // if parent is not display: table, none of this works
+  display: table-cell;
+  text-align: center;
+  vertical-align: middle;
+
+  color: white;
+  font-size: 26px;
+  font-weight: bold;
+}
+
+// damage button styles
+.damage-buttons {
+  @include block-grid(6);
+
+  .button {
+    width: 100%;
+  }
+}
+
+
+// Or selectively include components
+// @import
+//   "foundation/components/accordion",
+//   "foundation/components/alert-boxes",
+//   "foundation/components/block-grid",
+//   "foundation/components/breadcrumbs",
+//   "foundation/components/button-groups",
+//   "foundation/components/buttons",
+//   "foundation/components/clearing",
+//   "foundation/components/dropdown",
+//   "foundation/components/dropdown-buttons",
+//   "foundation/components/flex-video",
+//   "foundation/components/forms",
+//   "foundation/components/grid",
+//   "foundation/components/inline-lists",
+//   "foundation/components/joyride",
+//   "foundation/components/keystrokes",
+//   "foundation/components/labels",
+//   "foundation/components/magellan",
+//   "foundation/components/orbit",
+//   "foundation/components/pagination",
+//   "foundation/components/panels",
+//   "foundation/components/pricing-tables",
+//   "foundation/components/progress-bars",
+//   "foundation/components/reveal",
+//   "foundation/components/side-nav",
+//   "foundation/components/split-buttons",
+//   "foundation/components/sub-nav",
+//   "foundation/components/switch",
+//   "foundation/components/tables",
+//   "foundation/components/tabs",
+//   "foundation/components/thumbs",
+//   "foundation/components/tooltips",
+//   "foundation/components/top-bar",
+//   "foundation/components/type",
+//   "foundation/components/offcanvas",
+//   "foundation/components/visibility";
