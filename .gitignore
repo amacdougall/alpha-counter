@@ -16,3 +16,4 @@ pom.xml.asc
 
 # other artifacts
 /.sass-cache
+/figwheel_server.log
