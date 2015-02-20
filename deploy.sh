@@ -1,24 +1,31 @@
-# can you believe that this used to be like 25 lines of Ruby?
+if [ "$1" = "prod" ]; then
+  HOST='yomicounter.com'
+  DIR='/home/amacdougall/webapps/yomicounter'
+elif [ "$1" = "staging" ]; then
+  HOST="alanmacdougall.com"
+  DIR="/home/amacdougall/webapps/alanmacdougall_octopress_blog/alphacounter"
+else
+  echo "Must provide a target environment argument: staging or prod"
+  exit
+fi
+
 echo "Compiling JS in advanced mode..."
-lein with-profiles -dev,+uberjar do cljsbuild clean, cljsbuild once
+lein do clean, cljsbuild once prod
 echo "Compilation complete!"
+
+echo "host ${HOST}, dir ${DIR}"
+
 echo "Uploading to remote server as ${USER}..."
 
-# rsync resources/public to the server; within the js folder, include only
-# app.js, discarding the umpteen source-map-related output files.
 if rsync -avz \
-	--dry-run \
-    --include "js/app.js" \
-    --exclude "js/*" \
     --exclude "**/*.sw[a-p]" \
     resources/public/ \
-    $USER@yomicounter.com:/home/amacdougall/webapps/yomicounter ; then
+    ${USER}@${HOST}:${DIR} ; then
   echo "Upload complete!"
 else
   echo "rsync upload failed: are you an authorized SSH user? Contact the project owner for help."
 fi
 
 echo "Compiling JS in dev mode..."
-lein do cljsbuild clean, cljsbuild once
-
+lein do clean, cljsbuild once
 echo "Deploy complete!"
