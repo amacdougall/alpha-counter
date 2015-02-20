@@ -4,7 +4,7 @@
             [alpha-counter.channels :refer [running-total delayed-total trickle]]
             [clojure.string :as string]
             [goog.events :as events]
-            ; [FastClick] ; foreign lib, appears as js/FastClick
+            [FastClick] ; foreign lib, appears as js/FastClick
             [cljs.core.async :refer [>! <! chan put! mult tap]])
   (:require-macros [cljs.core.async.macros :refer [go go-loop]])
   (:import [goog.events EventType]))
@@ -338,7 +338,7 @@
           (om/build life-counter-view app))))))
 
 (defn main []
-  ; (.attach js/FastClick (.-body js/document))
+  (.attach js/FastClick (.-body js/document))
   (om/root main-view
     app-state
     {:target (. js/document (getElementById "app"))}))

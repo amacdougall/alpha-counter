@@ -27,17 +27,18 @@
                          :asset-path "js/compiled/out"
                          :source-map true
                          :source-map-timestamp true
-                         :foreign-libs [{:file "resources/vendor/fastclick/fastclick.min.js"
-                                         :provides ["FastClick"]}]
+                         :foreign-libs [{:file "resources/vendor/fastclick/fastclick.min.js" :provides ["FastClick"]}]
                          :cache-analysis true }}
              {:id "prod"
               :source-paths ["src"]
               :compiler {:output-to "resources/public/js/compiled/alpha_counter.js"
-                         :main alpha-counter.core                         
-                         :foreign-libs [{:file "resources/vendor/fastclick/fastclick.min.js"
-                                         :provides ["FastClick"]}]
                          :optimizations :advanced
-                         :pretty-print false}}]}
+                         :main alpha-counter.core
+                         :foreign-libs [{:file "resources/vendor/fastclick/fastclick.min.js" :provides ["FastClick"]}]
+                         :externs ["resources/vendor/fastclick/fastclick.js"]
+                         :pretty-print false
+                         :closure-warnings {:externs-validation :off
+                                            :non-standard-jsdoc :off}}}]}
 
   :figwheel {
              :http-server-root "public" ;; default and assumes "resources" 
