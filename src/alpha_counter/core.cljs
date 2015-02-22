@@ -54,7 +54,8 @@
 (defonce app-state
   (atom
     {:characters-selected false ; when true, displays the main life counter
-     :players [{:id :player-one, :current true} {:id :player-two}]}))
+     :players [{:id :player-one} {:id :player-two}]
+     :current-player nil}))
 
 ; Utility
 ;; Returns the supplied string class names, without nils, as a space-separated
@@ -64,16 +65,14 @@
 (defn- classes [& cs]
   (string/join " " (remove nil? cs)))
 
-;; Sets :current to true on the supplied player, false on all others. Can be
-;; used as a handler as (partial app player).
+;; Sets the supplied player to :current-player.
 (defn- select-player [app player]
-  (let [set-current #(assoc % :current (= % @player))]
-    (om/transact! app :players #(mapv set-current %))))
+  (om/update! app [:current-player] player))
 
-;; Returns a cursor for the current player, or for player one.
+;; Returns a cursor for the current player, or for player one if no player is
+;; selected yet.
 (defn- get-current-player [app]
-  (or (first (filter :current (:players app)))
-      (first (:players app))))
+  (or (:current-player app) (first (:players app))))
 
 ;; Subtracts n health from the player. If n is negative, this will heal the
 ;; player, but only up to the maximum health of the player's character.
@@ -213,18 +212,18 @@
     (display-name [_] "HealthView")
     om/IRender
     (render [_]
-      (let [{:keys [player select-player]} props
+      (let [{:keys [player current-player select-player]} props
             ; if this is the left-hand player, the health bar should be aligned
             ; right as it shrinks; I'd prefer to do this in CSS, I just don't
             ; know how. TODO: learn how. Maybe dwab or Rachel can help.
             left (= (:id player) :player-one)
+            current (= player current-player)
             health-width ["width" (health-percent player)]
             health-offset (when left ["marginLeft" (damage-percent player)])
             health-style (apply js-obj (concat health-width health-offset))]
             ; NOTE: (js-obj "a" 1 "b" 2) => {a: 1, b: 2} in JavaScript
-        (dom/li #js {:className (classes "health-view"
-                                         (when (:current player) "current"))
-                      :onClick #(select-player player)}
+        (dom/li #js {:className (classes "health-view" (when current "current"))
+                     :onClick #(select-player player)}
           (dom/div #js {:className "health-view__name"} (-> player :character :name))
           (dom/div #js {:className "health-view__health-bar"}
             (dom/div #js {:className "health-view__damage"} "")
@@ -259,8 +258,6 @@
                    (dom/button
                     #js {:className "small button"
                          :onClick #(put! hits n)}
-                    ; negative damage should be displayed as "+n". Maybe this
-                    ; is weird? I'll think about it later.
                     (if (pos? n) n (str "+" (Math/abs n))))))
                damage-amounts))))))
 
@@ -320,9 +317,10 @@
         ; player health bars
         (apply dom/ul #js {:className "players"}
           (om/build-all health-view
-            (mapv (fn [p] ; build health-view arguments per player
-                    {:player p
-                     :select-player (partial select-player app p)})
+            (mapv (fn [player] ; build health-view arguments per player
+                    {:player player
+                     :current-player (get-current-player app)
+                     :select-player (partial select-player app player)})
                   (:players app))))
         ; damage buttons
         (om/build damage-buttons-view {:app app :hit-channels hit-channels})))))
