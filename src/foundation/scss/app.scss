@@ -1,5 +1,6 @@
 @import "settings";
 @import "foundation";
+@import "compass/css3/border-radius";
 
 // NOTE: some defaults are defined in _settings.scss
 
@@ -10,6 +11,7 @@ $background-color: #fff0a5;
 $health-bar-height: 30px;
 $health-bar-color: $warning-color;
 $health-bar-damage-color: $alert-color;
+$health-bar-border-radius: 8px;
 
 $combo-color-idle: $success-color;
 $combo-color-healing: #2f7289;
@@ -57,6 +59,14 @@ body {
 
 .health-view.current {
   font-weight: bold;
+
+  .health-view__damage {
+    border: 4px black solid;
+  }
+
+  .health-view__health {
+    border: 2px white solid;
+  }
 }
 
 .health-view:first-child {
@@ -70,6 +80,7 @@ body {
 }
 
 .health-view__health {
+  @include border-radius($health-bar-border-radius);
   background-color: $health-bar-color;
   height: $health-bar-height;
   margin-top: -($health-bar-height);
@@ -79,11 +90,16 @@ body {
 
 /* This background color is revealed as the health bar shrinks. */
 .health-view__damage {
+  @include border-radius($health-bar-border-radius);
   background-color: $health-bar-damage-color;
   height: $health-bar-height;
 }
 
 .combo-view {
+  @include border-radius(8px);
+
+  border: 2px black solid;
+
   display: table; // to center the text
   width: 4rem;
   height: 4rem;
