@@ -47,16 +47,11 @@
   (atom
     {:characters-selected false ; when true, displays the main life counter
      :players [{:id :player-one} {:id :player-two}]
-     :current-player nil}))
+     :current-player-id :player-one}))
 
-;; Sets the supplied player to :current-player.
+;; Sets :current-player-id to the id of the supplied player.
 (defn select-player [app player]
-  (om/update! app [:current-player] player))
-
-;; Returns a cursor for the current player, or for player one if no player is
-;; selected yet.
-(defn get-current-player [app]
-  (or (:current-player app) (first (:players app))))
+  (om/update! app [:current-player-id] (:id player)))
 
 ;; Subtracts n health from the player. If n is negative, this will heal the
 ;; player, but only up to the maximum health of the player's character.

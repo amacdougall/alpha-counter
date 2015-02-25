@@ -71,22 +71,22 @@
 (defn- damage-percent [player]
   (-> (- 1 (health-ratio player)) (* 100) Math/floor (str "%")))
 
-;; Health bar view. Expects props {:player p, :select-player fn}. Includes
-;; character name, current life as a number, and health and damage bars. The
-;; health bar shrinks as the player takes damage, progressively revealing the
-;; damage bar.
+;; Health bar view. Expects props {:player p, :current-player-id k,
+;; :select-player fn}. Includes character name, current life as a number, and
+;; health and damage bars. The health bar shrinks as the player takes damage,
+;; progressively revealing the damage bar.
 (defn- health-view [props owner]
   (reify
     om/IDisplayName
     (display-name [_] "HealthView")
     om/IRender
     (render [_]
-      (let [{:keys [player current-player select-player]} props
+      (let [{:keys [player current-player-id select-player]} props
             ; if this is the left-hand player, the health bar should be aligned
             ; right as it shrinks; I'd prefer to do this in CSS, I just don't
             ; know how. TODO: learn how. Maybe dwab or Rachel can help.
             left (= (:id player) :player-one)
-            current (= player current-player)
+            current (= (:id player) current-player-id)
             health-width ["width" (health-percent player)]
             health-offset (when left ["marginLeft" (damage-percent player)])
             health-style (apply js-obj (concat health-width health-offset))]
@@ -106,20 +106,9 @@
     om/IDisplayName
     (display-name [_] "DamageButtonsView")
     om/IRender
-    ; combo damage buttons
-    ; NOTE: checking player ids instead of doing straight equality on
-    ; players, because the cursor values are different -- even though it
-    ; totally works later when we call the damage function on a player
-    ; cursor stored in a channel hash. Weird stuff. I assume it's related
-    ; to the render lifecycle? Since this render is prompted by player
-    ; select, you'd think the :current value of both players would be up to
-    ; date in all cursors, though.
-    ;
-    ; TODO: There may yet be a way around this. Try again!
     (render [_]
       (let [{:keys [app hit-channels]} props
-            for-player (fn [{:keys [player]}]
-                         (= (:id player) (:id (data/get-current-player app))))
+            for-player #(= (-> % :player :id) (:current-player-id app))
             hits (-> (filter for-player hit-channels) first :channel)]
         (apply dom/ul #js {:className "damage-buttons"}
           (map (fn [n]
@@ -190,7 +179,7 @@
           (om/build-all health-view
             (mapv (fn [player] ; build health-view arguments per player
                     {:player player
-                     :current-player (data/get-current-player app)
+                     :current-player-id (:current-player-id app)
                      :select-player (partial data/select-player app player)})
                   (:players app))))
         ; damage buttons
