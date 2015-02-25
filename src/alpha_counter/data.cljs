@@ -47,7 +47,12 @@
   (atom
     {:characters-selected false ; when true, displays the main life counter
      :players [{:id :player-one} {:id :player-two}]
-     :current-player-id :player-one}))
+     :current-player-id :player-one
+     :history []}))
+
+;; Returns a reference cursor for the damage history.
+(defn history []
+  (om/ref-cursor (:history (om/root-cursor app-state))))
 
 ;; Sets :current-player-id to the id of the supplied player.
 (defn select-player [app player]
