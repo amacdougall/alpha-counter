@@ -107,17 +107,15 @@
     (display-name [_] "DamageButtonsView")
     om/IRender
     (render [_]
-      (let [{:keys [app hit-channels]} props
-            for-player #(= (-> % :player :id) (:current-player-id app))
-            hits (-> (filter for-player hit-channels) first :channel)]
-        (apply dom/ul #js {:className "damage-buttons"}
-          (map (fn [n]
-                 (dom/li nil
-                   (dom/button
-                    #js {:className "small button"
-                         :onClick #(put! hits n)}
-                    (if (pos? n) n (str "+" (Math/abs n))))))
-               data/damage-amounts))))))
+      ; TODO: get actual hit channel
+      (apply dom/ul #js {:className "damage-buttons"}
+             (map (fn [n]
+                    (dom/li nil
+                      (dom/button
+                        #js {:className "small button"
+                             :onClick (partial data/register-hit n)}
+                        (if (pos? n) n (str "+" (Math/abs n))))))
+                  data/damage-amounts)))))
 
 ;; When a combo is in progress, display the running total; otherwise, displays
 ;; the "VS" symbol between the two health-view panes.
@@ -145,30 +143,16 @@
     (display-name [_] "LifeCounterView")
     om/IInitState
     (init-state [_]
-      ; TODO: put these channels in alpha-counter.data
-      ; TODO: figure out a reload story for them -- just leave them running?
-      (let [hit-channels (data/init-hit-channels app)
-            damage-channels (data/init-damage-channels hit-channels)
-            total-channels (data/init-total-channels hit-channels)]
-        {:hit-channels hit-channels
-         :damage-channels damage-channels
-         :total-channels total-channels
-         :running-total 0}))
+      {:running-total 0})
     om/IWillMount
     (will-mount [_]
-      (let [damage-channels (om/get-state owner :damage-channels)
-            total-channels (om/get-state owner :total-channels)]
-        (doseq [{:keys [player channel]} damage-channels]
+      (doseq [player-id (map :id (:players app))]
+        (let [channel (:running-total (data/channels-for player-id))]
           ; update combo running total in component state
           (go-loop []
-            (om/set-state! owner :running-total (<! channel))
-            (recur)))
-        (doseq [{:keys [player channel]} total-channels]
-          ; apply totals as damage/healing
-          (go-loop []
-            (let [v (<! channel)]
-              (data/apply-damage player v))
-            (recur)))))
+            (when-let [n (<! channel)]
+              (om/set-state! owner :running-total n)
+              (recur))))))
     om/IRenderState
     (render-state [_ {:keys [hit-channels running-total] :as state}]
       (dom/div #js {:className "life-counter"}
