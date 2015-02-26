@@ -73,8 +73,20 @@
   (om/update! app [:current-player-id] (:id player)))
 
 (defn register-hit [n]
-  (let [hits (:hits (channels-for (:current-player-id @app-state)))]
-    (put! hits n)))
+  (let [id (:current-player-id @app-state)
+        hits (:hits (channels-for id))]
+    (put! hits n)
+    (om/transact! (history) #(conj % [id n]))))
+
+(defn undo []
+  (if-not (empty? (om/value (history)))
+    (om/transact! (om/root-cursor app-state)
+      (fn [{:keys [history] :as app}]
+        (let [[id n] (peek history)
+              hits (:hits (channels-for id))]
+          (put! hits (- n))
+          (assoc app :current-player-id id
+                 :history (pop history)))))))
 
 ;; Subtracts n health from the player. If n is negative, this will heal the
 ;; player, but only up to the maximum health of the player's character.

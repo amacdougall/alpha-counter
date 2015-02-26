@@ -107,7 +107,6 @@
     (display-name [_] "DamageButtonsView")
     om/IRender
     (render [_]
-      ; TODO: get actual hit channel
       (apply dom/ul #js {:className "damage-buttons"}
              (map (fn [n]
                     (dom/li nil
