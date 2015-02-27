@@ -52,7 +52,17 @@
                            :disabled (some #(nil? (:character %)) [p1 p2])}
             "Start!"))))))
 
-; Life Counter: health bars, combo damage display, damage buttons
+; Life Counter: toolbar, health bars, combo damage display, damage buttons
+(defn- toolbar-view [app owner]
+  (reify
+    om/IDisplayName
+    (display-name [_] "ToolbarView")
+    om/IRender
+    (render [_]
+      (dom/div #js {:className "toolbar"}
+        (dom/button #js {:onClick data/undo} "Undo")))))
+
+
 ;; Returns the player's health as a float ratio, between 1.0 and 0.0.
 (defn- health-ratio [player]
   (let [max-health (:health (:character player))
@@ -99,9 +109,11 @@
             (dom/div #js {:className "health-view__health" :style health-style} "")
             (dom/div #js {:className "health-view__number"} (:health player))))))))
 
-;; List of damage buttons. Expects props {:app :hit-channels}. Automatically
-;; sets up buttons to send hits to the appropriate channels.
-(defn- damage-buttons-view [props owner]
+;; List of damage buttons. Uses no props, but om/build expects at least one, so
+;; just supply nil. Automatically sets up buttons to send hits to the
+;; appropriate channels.
+; TODO: Remove the need to pass nil; maybe define this as a partial?
+(defn- damage-buttons-view [_ owner]
   (reify
     om/IDisplayName
     (display-name [_] "DamageButtonsView")
@@ -133,9 +145,8 @@
         (dom/div #js {:className (classes "combo-view" active-state-name)}
           (dom/div #js {:className "combo-view__text"} text))))))
 
-;; Life counter view. Includes the combo damage readout and a health-view for
-;; each player. Its local state includes channels which manage the combo damage
-;; running total and the total damage.
+;; Life counter view. Includes the combo damage readout, a health-view for each
+;; player, damage buttons, and a toolbar.
 (defn life-counter-view [app owner]
   (reify
     om/IDisplayName
@@ -147,17 +158,18 @@
     (will-mount [_]
       (doseq [player-id (map :id (:players app))]
         (let [channel (:running-total (data/channels-for player-id))]
-          ; update combo running total in component state
+          ; keep running-total state up to date with channel
           (go-loop []
             (when-let [n (<! channel)]
               (om/set-state! owner :running-total n)
               (recur))))))
     om/IRenderState
-    (render-state [_ {:keys [hit-channels running-total] :as state}]
+    (render-state [_ {:keys [running-total]}]
       (dom/div #js {:className "life-counter"}
-        ; combo total
+        ; toolbar
+        (om/build toolbar-view app)
+        ; health bars and combo running total ("VS" button when idle)
         (om/build combo-view running-total)
-        ; player health bars
         (apply dom/ul #js {:className "players"}
           (om/build-all health-view
             (mapv (fn [player] ; build health-view arguments per player
@@ -166,7 +178,7 @@
                      :select-player (partial data/select-player app player)})
                   (:players app))))
         ; damage buttons
-        (om/build damage-buttons-view {:app app :hit-channels hit-channels})))))
+        (om/build damage-buttons-view nil)))))
 
 ; Base
 (defn main-view [app owner]
