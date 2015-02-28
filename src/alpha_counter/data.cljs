@@ -150,17 +150,18 @@
 (defn- build-channels [{:keys [players]}]
   (apply assoc {} (interleave (map :id players) (map player->channels players))))
 
-;; Sets the app ready.
+;; Sets the app ready. Rebuilds channels, sets player health to max.
 (defn ready [app]
-  (reset! channels (build-channels app)) ; old channels can just be GCed
-  (om/update! app [:characters-selected] true))
+  (let [reset-health #(assoc % :health (:health (:character %)))]
+    (reset! channels (build-channels app)) ; old channels can just be GCed
+    (om/transact! app #(assoc % :characters-selected true
+                                :players (mapv reset-health (:players %))))))
 
 ; Character Select
 ;; Initializes the player by selecting the character. Sets player health to the
 ;; character's max health.
 (defn choose-character [player character]
-  (om/transact! player #(assoc % :character character
-                                 :health (:health character))))
+  (om/update! player [:character] character))
 
 (defn chosen? [character-name]
   (let [players (:players @app-state)
