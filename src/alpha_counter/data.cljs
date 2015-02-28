@@ -44,6 +44,8 @@
 ;; will be applied to the player.
 (def combo-timeout 3000)
 
+(declare app-state channels)
+
 (defonce app-state
   (atom
     {:characters-selected false ; when true, displays the main life counter
@@ -60,7 +62,9 @@
 (defonce channels
   (atom nil))
 
-;; Returns a reference cursor for the app state.
+;; Returns a reference cursor for the app state. To the best of my knowledgely,
+;; if you aren't planning to transact on the cursor, you may as well just deref
+;; it. om/value vs @app-state is probably not going to be a big deal.
 (defn app-cursor []
   (om/ref-cursor (om/root-cursor app-state)))
 
@@ -77,11 +81,16 @@
 (defn select-player [app player]
   (om/update! app [:current-player-id] (:id player)))
 
-(defn register-hit [n]
-  (let [id (:current-player-id @app-state)
-        hits (:hits (channels-for id))]
-    (put! hits n)
-    (om/transact! (history-cursor) #(conj % [id n]))))
+;; Given a damage amount and optionally a player id, registers a hit on that
+;; player for that amount. If id is omitted, applies the hit to the current
+;; player.
+(defn register-hit
+  ([n]
+   (register-hit n (:current-player-id @app-state)))
+  ([n id]
+   (let [hits (:hits (channels-for id))]
+     (put! hits n)
+     (om/transact! (history-cursor) #(conj % [id n])))))
 
 (defn undo []
   (if-not (empty? (om/value (history-cursor)))
@@ -129,30 +138,37 @@
      :running-total running-total
      :damage damage}))
 
+;; Resets character selection and returns to the character screen.
+(defn return-to-character-select []
+  (om/transact! (app-cursor)
+    (fn [app]
+      (assoc app
+             :characters-selected false
+             :running-total 0))))
+
 ;; Returns a channel hash appropriate for the channels atom.
 (defn- build-channels [{:keys [players]}]
-  (.log js/console "data/build-channels")
   (apply assoc {} (interleave (map :id players) (map player->channels players))))
-
-;; Closes all channels in the channels atom. Useful when resetting the
-;; application state after character change or a Figwheel live reload.
-(defn- close-all-channels! []
-  (doseq [[_ v] @channels, 
-          [_ ch] v]
-    (close! ch)))
-
-(defn reset-channels! [app]
-  (close-all-channels!)
-  (reset! channels (build-channels app)))
 
 ;; Sets the app ready.
 (defn ready [app]
-  (reset-channels! app)
+  (reset! channels (build-channels app)) ; old channels can just be GCed
   (om/update! app [:characters-selected] true))
 
 ; Character Select
 ;; Initializes the player by selecting the character. Sets player health to the
 ;; character's max health.
-(defn select-character [player character]
+(defn choose-character [player character]
   (om/transact! player #(assoc % :character character
                                  :health (:health character))))
+
+(defn chosen? [character-name]
+  (let [players (:players @app-state)
+        ->name #(:name (:character %))
+        names (map ->name players)]
+    (some (partial = character-name) names)))
+
+(defn player-of [character-name]
+  (let [players (:players @app-state)
+              has-character #(= (:name (:character %)) character-name)]
+      (:id (first (filter has-character players)))))

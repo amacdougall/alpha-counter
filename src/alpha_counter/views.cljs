@@ -1,6 +1,7 @@
 (ns alpha-counter.views
   (:require [alpha-counter.data :as data]
-            [cljs.core.async :refer [>! <! put!]]
+            [alpha-counter.abilities :as abilities]
+            [cljs.core.async :refer [>! <! put! timeout]]
             [om.core :as om :include-macros true]
             [om.dom :as dom :include-macros true]
             [clojure.string :as string])
@@ -22,7 +23,7 @@
     (dom/li nil
       (dom/button
         #js {:className button-classes
-             :onClick #(data/select-character player character)}
+             :onClick #(data/choose-character player character)}
         (:name character)))))
 
 ;; Given a player, returns a vec of character icon elements which select that
@@ -53,15 +54,57 @@
             "Start!"))))))
 
 ; Life Counter: toolbar, health bars, combo damage display, damage buttons
+;; When first clicked, adds the "activated" class to the button for 2 seconds.
+;; If clicked again within this time, returns to character select.
+(defn- character-select-button [_ owner]
+  (reify
+    om/IDisplayName
+    (display-name [_] "CharacterSelectButton")
+    om/IInitState
+    (init-state [_] {:activated false}) ; when true, next click will return to char select
+    om/IRenderState
+    (render-state [_ {:keys [activated]}]
+      (let [activate! (fn []
+                        (om/set-state! owner :activated true)
+                        (js/setTimeout #(om/set-state! owner :activated false) 1000))
+            handle-click #(if activated
+                            (data/return-to-character-select)
+                            (activate!))]
+        (dom/button #js {:className (classes "button small" (when activated "activated"))
+                         :onClick handle-click}
+          "Character Select")))))
+
 (defn- toolbar-view [app owner]
   (reify
     om/IDisplayName
     (display-name [_] "ToolbarView")
     om/IRender
     (render [_]
-      (dom/div #js {:className "toolbar"}
-        (dom/button #js {:onClick data/undo} "Undo")))))
-
+      (dom/div #js {:className "toolbar-view"}
+        (om/build character-select-button nil)
+        (dom/button #js {:className "button small" :onClick data/undo} "Undo")
+        (when (data/chosen? "Gwen")
+          (dom/div #js {:className "abilities"}
+            (dom/button #js {:className "button small" :onClick abilities/shadow-plague}
+              "Shadow Plague")))
+        (when (data/chosen? "Gloria")
+          (dom/div #js {:className "abilities"}
+            (dom/button #js {:className "button small" :onClick abilities/overdose}
+              "Overdose")
+            (dom/button #js {:className "button small" :onClick abilities/healing-touch}
+              "Healing Touch")
+            (dom/button #js {:className "button small" :onClick abilities/bathed-in-moonlight}
+              "Bathed in Moonlight")))
+        (when (data/chosen? "Argagarg")
+          (dom/div #js {:className "abilities"}
+            (dom/button #js {:className "button small" :onClick abilities/hex-of-murkwood}
+             "Hex of Murkwood")))
+        (when (data/chosen? "Jaina")
+          (dom/div #js {:className "abilities"}
+            (dom/button #js {:className "button small" :onClick abilities/burning-vigor}
+              "Burning Vigor")
+            (dom/button #js {:className "button small" :onClick abilities/burning-desperation}
+              "Burning Desperation")))))))
 
 ;; Returns the player's health as a float ratio, between 1.0 and 0.0.
 (defn- health-ratio [player]
@@ -124,7 +167,7 @@
                     (dom/li nil
                       (dom/button
                         #js {:className "small button"
-                             :onClick (partial data/register-hit n)}
+                             :onClick #(data/register-hit n)}
                         (if (pos? n) n (str "+" (Math/abs n))))))
                   data/damage-amounts)))))
 
