@@ -151,25 +151,13 @@
   (reify
     om/IDisplayName
     (display-name [_] "LifeCounterView")
-    om/IInitState
-    (init-state [_]
-      {:running-total 0})
-    om/IWillMount
-    (will-mount [_]
-      (doseq [player-id (map :id (:players app))]
-        (let [channel (:running-total (data/channels-for player-id))]
-          ; keep running-total state up to date with channel
-          (go-loop []
-            (when-let [n (<! channel)]
-              (om/set-state! owner :running-total n)
-              (recur))))))
-    om/IRenderState
-    (render-state [_ {:keys [running-total]}]
+    om/IRender
+    (render [_]
       (dom/div #js {:className "life-counter"}
         ; toolbar
         (om/build toolbar-view app)
         ; health bars and combo running total ("VS" button when idle)
-        (om/build combo-view running-total)
+        (om/build combo-view (:running-total app))
         (apply dom/ul #js {:className "players"}
           (om/build-all health-view
             (mapv (fn [player] ; build health-view arguments per player

@@ -49,6 +49,7 @@
     {:characters-selected false ; when true, displays the main life counter
      :players [{:id :player-one} {:id :player-two}]
      :current-player-id :player-one
+     :running-total 0
      :history []}))
 
 ;; Contains a map {:player-id {:hits ch, :running-total ch, :damage ch}, ...},
@@ -59,8 +60,12 @@
 (defonce channels
   (atom nil))
 
+;; Returns a reference cursor for the app state.
+(defn app-cursor []
+  (om/ref-cursor (om/root-cursor app-state)))
+
 ;; Returns a reference cursor for the damage history.
-(defn history []
+(defn history-cursor []
   (om/ref-cursor (:history (om/root-cursor app-state))))
 
 ;; Returns the {:hits :running-total :damage} channel map for player with the
@@ -76,16 +81,17 @@
   (let [id (:current-player-id @app-state)
         hits (:hits (channels-for id))]
     (put! hits n)
-    (om/transact! (history) #(conj % [id n]))))
+    (om/transact! (history-cursor) #(conj % [id n]))))
 
 (defn undo []
-  (if-not (empty? (om/value (history)))
+  (if-not (empty? (om/value (history-cursor)))
     (om/transact! (om/root-cursor app-state)
       (fn [{:keys [history] :as app}]
         (let [[id n] (peek history)
               hits (:hits (channels-for id))]
           (put! hits (- n))
-          (assoc app :current-player-id id
+          (assoc app
+                 :current-player-id id
                  :history (pop history)))))))
 
 ;; Subtracts n health from the player. If n is negative, this will heal the
@@ -107,6 +113,12 @@
                  (channels/delayed-total combo-timeout)
                  (channels/trickle health-change-speed))]
 
+    ; update running total as numbers come off any running-total channel
+    (go-loop []
+      (when-let [n (<! running-total)]
+        (om/update! (app-cursor) [:running-total] n)
+        (recur)))
+
     ; apply damage to player as it comes off the delay->trickle chain
     (go-loop []
       (when-let [v (<! damage)]
@@ -119,6 +131,7 @@
 
 ;; Returns a channel hash appropriate for the channels atom.
 (defn- build-channels [{:keys [players]}]
+  (.log js/console "data/build-channels")
   (apply assoc {} (interleave (map :id players) (map player->channels players))))
 
 ;; Closes all channels in the channels atom. Useful when resetting the
@@ -128,10 +141,13 @@
           [_ ch] v]
     (close! ch)))
 
+(defn reset-channels! [app]
+  (close-all-channels!)
+  (reset! channels (build-channels app)))
+
 ;; Sets the app ready.
 (defn ready [app]
-  (close-all-channels!)
-  (reset! channels (build-channels app))
+  (reset-channels! app)
   (om/update! app [:characters-selected] true))
 
 ; Character Select
