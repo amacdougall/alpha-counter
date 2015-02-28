@@ -139,7 +139,7 @@
      :damage damage}))
 
 ;; Resets character selection and returns to the character screen.
-(defn return-to-character-select []
+(defn return-to-character-select! []
   (om/transact! (app-cursor)
     (fn [app]
       (assoc app
@@ -150,12 +150,25 @@
 (defn- build-channels [{:keys [players]}]
   (apply assoc {} (interleave (map :id players) (map player->channels players))))
 
-;; Sets the app ready. Rebuilds channels, sets player health to max.
-(defn ready [app]
-  (let [reset-health #(assoc % :health (:health (:character %)))]
-    (reset! channels (build-channels app)) ; old channels can just be GCed
-    (om/transact! app #(assoc % :characters-selected true
-                                :players (mapv reset-health (:players %))))))
+(defn- clear-history! []
+  (om/update! (history-cursor) []))
+
+;; Returns the player, at full health.
+(defn- reset-health [player]
+  (assoc player :health (-> player :character :health)))
+
+;; Sets the app ready. Rebuilds channels, sets players to full health.
+; TODO: rename; this is a bit vague.
+(defn ready! [app]
+  (reset! channels (build-channels app)) ; old channels can just be GCed
+  (clear-history!)
+  (om/transact! app #(assoc % :characters-selected true
+                            :players (mapv reset-health (:players %)))))
+
+;; Returns all players to full health.
+(defn rematch! []
+  (clear-history!)
+  (om/transact! (app-cursor) #(assoc % :players (mapv reset-health (:players %)))))
 
 ; Character Select
 ;; Initializes the player by selecting the character. Sets player health to the

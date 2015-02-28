@@ -49,7 +49,7 @@
           (dom/h2 nil "Player Two")
           (apply dom/ul #js {:className "list"} (player->icons p2))
           (dom/button #js {:className "button"
-                           :onClick #(data/ready app)
+                           :onClick #(data/ready! app)
                            :disabled (some #(nil? (:character %)) [p1 p2])}
             "Start!"))))))
 
@@ -68,11 +68,32 @@
                         (om/set-state! owner :activated true)
                         (js/setTimeout #(om/set-state! owner :activated false) 1000))
             handle-click #(if activated
-                            (data/return-to-character-select)
+                            (data/return-to-character-select!)
                             (activate!))]
         (dom/button #js {:className (classes "button small" (when activated "activated"))
                          :onClick handle-click}
           "Character Select")))))
+
+;; When first clicked, adds the "activated" class to the button for 2 seconds.
+;; If clicked again within this time, returns to character select.
+; TODO: abstract into a two-stage-button which can be used for both of these
+(defn- rematch-button [_ owner]
+  (reify
+    om/IDisplayName
+    (display-name [_] "RematchButton")
+    om/IInitState
+    (init-state [_] {:activated false}) ; when true, next click will return to char select
+    om/IRenderState
+    (render-state [_ {:keys [activated]}]
+      (let [activate! (fn []
+                        (om/set-state! owner :activated true)
+                        (js/setTimeout #(om/set-state! owner :activated false) 1000))
+            handle-click #(if activated
+                            (data/rematch!)
+                            (activate!))]
+        (dom/button #js {:className (classes "button small" (when activated "activated"))
+                         :onClick handle-click}
+          "Rematch")))))
 
 (defn- toolbar-view [app owner]
   (reify
@@ -82,6 +103,7 @@
     (render [_]
       (dom/div #js {:className "toolbar-view"}
         (om/build character-select-button nil)
+        (om/build rematch-button nil)
         (dom/button #js {:className "button small" :onClick data/undo} "Undo")
         (when (data/chosen? "Gwen")
           (dom/div #js {:className "abilities"}
