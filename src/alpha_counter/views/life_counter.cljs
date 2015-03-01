@@ -26,13 +26,13 @@
                          :onClick handle-click}
           text)))))
 
-(defn- toolbar-view [app owner]
+(defn- toolbar [app owner]
   (reify
     om/IDisplayName
     (display-name [_] "ToolbarView")
     om/IRender
     (render [_]
-      (dom/div #js {:className "toolbar-view"}
+      (dom/div #js {:className "toolbar"}
         (om/build two-stage-button {:text "Character Select" :on-click data/return-to-character-select!})
         (om/build two-stage-button {:text "Rematch" :on-click data/rematch!})
         (dom/button #js {:className "button small" :onClick data/undo!} "Undo")
@@ -81,7 +81,7 @@
 ;; :select-player fn}. Includes character name, current life as a number, and
 ;; health and damage bars. The health bar shrinks as the player takes damage,
 ;; progressively revealing the damage bar.
-(defn- health-view [props owner]
+(defn- health [props owner]
   (reify
     om/IDisplayName
     (display-name [_] "HealthView")
@@ -96,20 +96,20 @@
             health-width ["width" (health-percent player)]
             health-offset (when left ["marginLeft" (damage-percent player)])
             health-style (apply js-obj (concat health-width health-offset))]
-        (dom/li #js {:className (classes "health-view" (when current "current"))
+        (dom/li #js {:className (classes "health" (when current "current"))
                      :onClick select-player}
-          (dom/div #js {:className "health-view__name"}
+          (dom/div #js {:className "health__name"}
             (str (when (:ex player) "EX ") (:name (:character player))))
-          (dom/div #js {:className "health-view__health-bar"}
-            (dom/div #js {:className "health-view__damage"} "")
-            (dom/div #js {:className "health-view__health" :style health-style} "")
-            (dom/div #js {:className "health-view__number"} (:health player))))))))
+          (dom/div #js {:className "health__health-bar"}
+            (dom/div #js {:className "health__damage"} "")
+            (dom/div #js {:className "health__health" :style health-style} "")
+            (dom/div #js {:className "health__number"} (:health player))))))))
 
 ;; List of damage buttons. Uses no props, but om/build expects at least one, so
 ;; just supply nil. Automatically sets up buttons to send hits to the
 ;; appropriate channels.
 ; TODO: Remove the need to pass nil; maybe define this as a partial?
-(defn- damage-buttons-view [_ owner]
+(defn- damage-buttons [_ owner]
   (reify
     om/IDisplayName
     (display-name [_] "DamageButtonsView")
@@ -125,8 +125,8 @@
                   data/damage-amounts)))))
 
 ;; When a combo is in progress, display the running total; otherwise, displays
-;; the "VS" symbol between the two health-view panes.
-(defn- combo-view [running-total owner]
+;; the "VS" symbol between the two health panes.
+(defn- combo [running-total owner]
   (reify
     om/IDisplayName
     (display-name [_] "ComboView")
@@ -138,12 +138,12 @@
             text (if idle "VS" damage-text)
             active-state-name (cond is-healing "healing", (not idle) "damage")]
             ; active-state-name is nil if idle
-        (dom/div #js {:className (classes "combo-view" active-state-name)}
-          (dom/div #js {:className "combo-view__text"} text))))))
+        (dom/div #js {:className (classes "combo" active-state-name)}
+          (dom/div #js {:className "combo__text"} text))))))
 
-;; Life counter view. Includes the combo damage readout, a health-view for each
-;; player, damage buttons, and a toolbar.
-(defn life-counter-view [app owner]
+;; Life counter view. Includes the combo damage readout, a health component for
+;; each player, damage buttons, and a toolbar.
+(defn main [app owner]
   (reify
     om/IDisplayName
     (display-name [_] "LifeCounterView")
@@ -151,16 +151,16 @@
     (render [_]
       (dom/div #js {:className "life-counter"}
         ; toolbar
-        (om/build toolbar-view app)
+        (om/build toolbar app)
         ; health bars and combo running total ("VS" button when idle)
-        (om/build combo-view (:running-total app))
+        (om/build combo (:running-total app))
         (apply dom/ul #js {:className "players"}
-          (om/build-all health-view
-            (mapv (fn [player] ; build health-view arguments per player
+          (om/build-all health
+            (mapv (fn [player] ; build health arguments per player
                     {:player player
                      :current-player-id (:current-player-id app)
                      :select-player (partial data/select-player app player)})
                   (:players app))))
         ; damage buttons
-        (om/build damage-buttons-view nil)))))
+        (om/build damage-buttons nil)))))
 

@@ -26,7 +26,7 @@ body {
   &.night-mode {
     background-color: scale-color($background-color, $lightness: -92%);
 
-    .health-view__name, .health-view__number {
+    .health__name, .health__number {
       color: white;
     }
   }
@@ -60,33 +60,33 @@ body {
   @include block-grid(2);
 }
 
-.health-view {
+.health {
   cursor: pointer;
 }
 
-.health-view.current {
+.health.current {
   font-weight: bold;
 
-  .health-view__damage {
+  .health__damage {
     border: 4px black solid;
   }
 
-  .health-view__health {
+  .health__health {
     border: 2px white solid;
   }
 }
 
-.health-view:first-child {
-  .health-view__name, .health-view__number {
+.health:first-child {
+  .health__name, .health__number {
     text-align: left;
   }
 }
 
-.health-view__name, .health-view__number {
+.health__name, .health__number {
   text-align: right;
 }
 
-.health-view__health {
+.health__health {
   @include border-radius($health-bar-border-radius);
   background-color: $health-bar-color;
   height: $health-bar-height;
@@ -96,13 +96,13 @@ body {
 }
 
 /* This background color is revealed as the health bar shrinks. */
-.health-view__damage {
+.health__damage {
   @include border-radius($health-bar-border-radius);
   background-color: $health-bar-damage-color;
   height: $health-bar-height;
 }
 
-.combo-view {
+.combo {
   @include border-radius(8px);
 
   border: 2px black solid;
@@ -126,7 +126,7 @@ body {
   }
 }
 
-.combo-view__text {
+.combo__text {
   // if parent is not display: table, none of this works
   display: table-cell;
   text-align: center;
@@ -146,7 +146,7 @@ body {
   }
 }
 
-.toolbar-view {
+.toolbar {
   .button {
     vertical-align: top;
     padding-top: 0.5rem;
@@ -163,7 +163,6 @@ body {
       align-items: center,
     ));
   }
-
 }
 
 .abilities {
@@ -172,8 +171,6 @@ body {
     display: inline-flex
   ));
 }
-
-
 
 // Or selectively include components
 // @import

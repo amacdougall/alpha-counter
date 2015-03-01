@@ -1,6 +1,6 @@
 (ns alpha-counter.core
   (:require [alpha-counter.data :as data]
-            [alpha-counter.views.main :refer [main-view]]
+            [alpha-counter.views.main :as views]
             [om.core :as om :include-macros true]
             [FastClick]))
 
@@ -8,7 +8,7 @@
 
 (defn main []
   (.attach js/FastClick (.-body js/document))
-  (om/root main-view
+  (om/root views/main
     data/app-state
     {:target (. js/document (getElementById "app"))}))
 

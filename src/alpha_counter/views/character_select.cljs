@@ -23,7 +23,7 @@
 ;; Top-level view which displays a character icon grid for each player,
 ;; followed by a Ready button. The Ready button is only enabled when both
 ;; players have selected a character.
-(defn character-select-view [app owner]
+(defn main [app owner]
   (reify
     om/IDisplayName
     (display-name [_] "CharacterSelectView")
