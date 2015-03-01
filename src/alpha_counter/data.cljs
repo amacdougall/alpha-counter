@@ -92,7 +92,7 @@
      (put! hits n)
      (om/transact! (history-cursor) #(conj % [id n])))))
 
-(defn undo []
+(defn undo! []
   (if-not (empty? (om/value (history-cursor)))
     (om/transact! (om/root-cursor app-state)
       (fn [{:keys [history] :as app}]

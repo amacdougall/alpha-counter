@@ -54,12 +54,13 @@
             "Start!"))))))
 
 ; Life Counter: toolbar, health bars, combo damage display, damage buttons
-;; When first clicked, adds the "activated" class to the button for 2 seconds.
-;; If clicked again within this time, returns to character select.
-(defn- character-select-button [_ owner]
+;; Takes a properties hash {:text string, :on-click fn}. When first clicked,
+;; adds the "activated" class to the button for 2 seconds. If clicked again
+;; within this time, executes :on-click.
+(defn two-stage-button [{:keys [text on-click]} owner]
   (reify
     om/IDisplayName
-    (display-name [_] "CharacterSelectButton")
+    (display-name [_] "TwoStageButton")
     om/IInitState
     (init-state [_] {:activated false}) ; when true, next click will return to char select
     om/IRenderState
@@ -68,32 +69,11 @@
                         (om/set-state! owner :activated true)
                         (js/setTimeout #(om/set-state! owner :activated false) 1000))
             handle-click #(if activated
-                            (data/return-to-character-select!)
+                            (on-click)
                             (activate!))]
         (dom/button #js {:className (classes "button small" (when activated "activated"))
                          :onClick handle-click}
-          "Character Select")))))
-
-;; When first clicked, adds the "activated" class to the button for 2 seconds.
-;; If clicked again within this time, returns to character select.
-; TODO: abstract into a two-stage-button which can be used for both of these
-(defn- rematch-button [_ owner]
-  (reify
-    om/IDisplayName
-    (display-name [_] "RematchButton")
-    om/IInitState
-    (init-state [_] {:activated false}) ; when true, next click will return to char select
-    om/IRenderState
-    (render-state [_ {:keys [activated]}]
-      (let [activate! (fn []
-                        (om/set-state! owner :activated true)
-                        (js/setTimeout #(om/set-state! owner :activated false) 1000))
-            handle-click #(if activated
-                            (data/rematch!)
-                            (activate!))]
-        (dom/button #js {:className (classes "button small" (when activated "activated"))
-                         :onClick handle-click}
-          "Rematch")))))
+          text)))))
 
 (defn- toolbar-view [app owner]
   (reify
@@ -102,30 +82,30 @@
     om/IRender
     (render [_]
       (dom/div #js {:className "toolbar-view"}
-        (om/build character-select-button nil)
-        (om/build rematch-button nil)
-        (dom/button #js {:className "button small" :onClick data/undo} "Undo")
+        (om/build two-stage-button {:text "Character Select" :on-click data/return-to-character-select!})
+        (om/build two-stage-button {:text "Rematch" :on-click data/rematch!})
+        (dom/button #js {:className "button small" :onClick data/undo!} "Undo")
         (when (data/chosen? "Gwen")
           (dom/div #js {:className "abilities"}
-            (dom/button #js {:className "button small" :onClick abilities/shadow-plague}
+            (dom/button #js {:className "button small" :onClick abilities/shadow-plague!}
               "Shadow Plague")))
         (when (data/chosen? "Gloria")
           (dom/div #js {:className "abilities"}
-            (dom/button #js {:className "button small" :onClick abilities/overdose}
+            (dom/button #js {:className "button small" :onClick abilities/overdose!}
               "Overdose")
-            (dom/button #js {:className "button small" :onClick abilities/healing-touch}
+            (dom/button #js {:className "button small" :onClick abilities/healing-touch!}
               "Healing Touch")
-            (dom/button #js {:className "button small" :onClick abilities/bathed-in-moonlight}
+            (dom/button #js {:className "button small" :onClick abilities/bathed-in-moonlight!}
               "Bathed in Moonlight")))
         (when (data/chosen? "Argagarg")
           (dom/div #js {:className "abilities"}
-            (dom/button #js {:className "button small" :onClick abilities/hex-of-murkwood}
+            (dom/button #js {:className "button small" :onClick abilities/hex-of-murkwood!}
              "Hex of Murkwood")))
         (when (data/chosen? "Jaina")
           (dom/div #js {:className "abilities"}
-            (dom/button #js {:className "button small" :onClick abilities/burning-vigor}
+            (dom/button #js {:className "button small" :onClick abilities/burning-vigor!}
               "Burning Vigor")
-            (dom/button #js {:className "button small" :onClick abilities/burning-desperation}
+            (dom/button #js {:className "button small" :onClick abilities/burning-desperation!}
               "Burning Desperation")))))))
 
 ;; Returns the player's health as a float ratio, between 1.0 and 0.0.
