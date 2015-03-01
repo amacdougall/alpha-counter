@@ -1,63 +1,14 @@
-(ns alpha-counter.views
+(ns alpha-counter.views.life-counter
   (:require [alpha-counter.data :as data]
+            [alpha-counter.views.util :refer [classes]]
             [alpha-counter.abilities :as abilities]
-            [cljs.core.async :refer [>! <! put! timeout]]
             [om.core :as om :include-macros true]
-            [om.dom :as dom :include-macros true]
-            [clojure.string :as string])
-  (:require-macros [cljs.core.async.macros :refer [go go-loop]]))
+            [om.dom :as dom :include-macros true]))
 
-; Utility
-;; Returns the supplied string class names, without nils, as a space-separated
-;; string suitable for use as a #js className. Class names may already include
-;; spaces, naturally; (classes "inner button" "selected") will return "inner
-;; button selected".
-(defn- classes [& cs]
-  (string/join " " (remove nil? cs)))
-
-;; Given a player and a character, returns an element which selects that
-;; character on click.
-(defn- character->icon [player character]
-  (let [selected? (= (:name character) (-> player :character :name))
-        button-classes (classes "small button" (when selected? "selected"))]
-    (dom/li nil
-      (dom/button
-        #js {:className button-classes
-             :onClick #(data/choose-character player character)}
-        (str (when (and selected? (:ex player)) "EX ") (:name character))))))
-
-;; Given a player, returns a vec of character icon elements which select that
-;; character for that player on click.
-(defn- player->icons [player]
-  (mapv (partial character->icon player) data/characters))
-
-;; Top-level view which displays a character icon grid for each player,
-;; followed by a Ready button. The Ready button is only enabled when both
-;; players have selected a character.
-(defn character-select-view [app owner]
-  (reify
-    om/IDisplayName
-    (display-name [_] "CharacterSelectView")
-    om/IRender
-    (render [_]
-      (let [p1 (-> app :players first)
-            p2 (-> app :players second)]
-        (dom/div #js {:className "character-select"}
-          (dom/h1 nil "Character Select")
-          (dom/h2 nil "Player One")
-          (apply dom/ul #js {:className "list"} (player->icons p1))
-          (dom/h2 nil "Player Two")
-          (apply dom/ul #js {:className "list"} (player->icons p2))
-          (dom/button #js {:className "button"
-                           :onClick #(data/ready! app)
-                           :disabled (some #(nil? (:character %)) [p1 p2])}
-            "Start!"))))))
-
-; Life Counter: toolbar, health bars, combo damage display, damage buttons
 ;; Takes a properties hash {:text string, :on-click fn}. When first clicked,
 ;; adds the "activated" class to the button for 2 seconds. If clicked again
 ;; within this time, executes :on-click.
-(defn two-stage-button [{:keys [text on-click]} owner]
+(defn- two-stage-button [{:keys [text on-click]} owner]
   (reify
     om/IDisplayName
     (display-name [_] "TwoStageButton")
@@ -145,7 +96,6 @@
             health-width ["width" (health-percent player)]
             health-offset (when left ["marginLeft" (damage-percent player)])
             health-style (apply js-obj (concat health-width health-offset))]
-            ; NOTE: (js-obj "a" 1 "b" 2) => {a: 1, b: 2} in JavaScript
         (dom/li #js {:className (classes "health-view" (when current "current"))
                      :onClick select-player}
           (dom/div #js {:className "health-view__name"}
@@ -176,7 +126,7 @@
 
 ;; When a combo is in progress, display the running total; otherwise, displays
 ;; the "VS" symbol between the two health-view panes.
-(defn combo-view [running-total owner]
+(defn- combo-view [running-total owner]
   (reify
     om/IDisplayName
     (display-name [_] "ComboView")
@@ -214,12 +164,3 @@
         ; damage buttons
         (om/build damage-buttons-view nil)))))
 
-; Base
-(defn main-view [app owner]
-  (reify
-    om/IRender
-    (render [_]
-      (dom/div #js {:className "content"}
-        (if-not (:characters-selected app)
-          (om/build character-select-view app)
-          (om/build life-counter-view app))))))
