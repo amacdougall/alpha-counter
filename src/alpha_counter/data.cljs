@@ -18,7 +18,7 @@
    {:name "Geiger" :health 90}
    {:name "Argagarg" :health 85}
    {:name "Quince" :health 90}
-   {:name "Bal-Bas-Beta" :health 80}
+   {:name "Bal-Bas-Beta" :health 80 :ex-health 100}
    {:name "Menelker" :health 70}
    {:name "Gloria" :health 70}
    {:name "Vendetta" :health 75}
@@ -81,6 +81,12 @@
 (defn select-player [app player]
   (om/update! app [:current-player-id] (:id player)))
 
+(defn max-health [player]
+  (let [character (:character player)]
+    (if (:ex player)
+      (or (:ex-health character) (:health character))
+      (:health character))))
+
 ;; Given a damage amount and optionally a player id, registers a hit on that
 ;; player for that amount. If id is omitted, applies the hit to the current
 ;; player.
@@ -106,11 +112,10 @@
 ;; Subtracts n health from the player. If n is negative, this will heal the
 ;; player, but only up to the maximum health of the player's character.
 (defn apply-damage [player n]
-  (om/transact! player (fn [player]
-                         (let [health (:health player)
-                               max-health (-> player :character :health)]
-                           (assoc player :health (min (- health n)
-                                                      max-health))))))
+  (om/transact! player
+    (fn [player]
+      (let [health (:health player)]
+        (assoc player :health (min (- health n) (max-health player)))))))
 
 (defn- player->channels [player]
   (let [hits (chan)
@@ -155,14 +160,15 @@
 
 ;; Returns the player, at full health.
 (defn- reset-health [player]
-  (assoc player :health (-> player :character :health)))
+  (assoc player :health (max-health player)))
 
 ;; Sets the app ready. Rebuilds channels, sets players to full health.
 ; TODO: rename; this is a bit vague.
 (defn ready! [app]
   (reset! channels (build-channels app)) ; old channels can just be GCed
   (clear-history!)
-  (om/transact! app #(assoc % :characters-selected true
+  (om/transact! app #(assoc %
+                            :characters-selected true
                             :players (mapv reset-health (:players %)))))
 
 ;; Returns all players to full health.
@@ -171,10 +177,12 @@
   (om/transact! (app-cursor) #(assoc % :players (mapv reset-health (:players %)))))
 
 ; Character Select
-;; Initializes the player by selecting the character. Sets player health to the
-;; character's max health.
+;; Initializes the player by selecting the character. If that character is
+;; already selected, toggles EX status.
 (defn choose-character [player character]
-  (om/update! player [:character] character))
+  (if (= (:character player) character)
+    (om/update! player [:ex] (not (:ex player)))
+    (om/transact! player #(assoc % :character character, :ex false))))
 
 (defn chosen? [character-name]
   (let [players (:players @app-state)

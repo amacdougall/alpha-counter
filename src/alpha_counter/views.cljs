@@ -24,7 +24,7 @@
       (dom/button
         #js {:className button-classes
              :onClick #(data/choose-character player character)}
-        (:name character)))))
+        (str (when (and selected? (:ex player)) "EX ") (:name character))))))
 
 ;; Given a player, returns a vec of character icon elements which select that
 ;; character for that player on click.
@@ -110,7 +110,7 @@
 
 ;; Returns the player's health as a float ratio, between 1.0 and 0.0.
 (defn- health-ratio [player]
-  (let [max-health (:health (:character player))
+  (let [max-health (data/max-health player)
         health (:health player)]
     (/ health max-health)))
 
@@ -148,7 +148,8 @@
             ; NOTE: (js-obj "a" 1 "b" 2) => {a: 1, b: 2} in JavaScript
         (dom/li #js {:className (classes "health-view" (when current "current"))
                      :onClick select-player}
-          (dom/div #js {:className "health-view__name"} (-> player :character :name))
+          (dom/div #js {:className "health-view__name"}
+            (str (when (:ex player) "EX ") (:name (:character player))))
           (dom/div #js {:className "health-view__health-bar"}
             (dom/div #js {:className "health-view__damage"} "")
             (dom/div #js {:className "health-view__health" :style health-style} "")
