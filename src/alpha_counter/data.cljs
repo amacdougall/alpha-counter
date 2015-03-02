@@ -190,7 +190,14 @@
         names (map ->name players)]
     (some (partial = character-name) names)))
 
+;; Returns the player who is using the supplied character. Note that mirror
+;; matches are fundamentally unsupported at the moment.
 (defn player-of [character-name]
   (let [players (:players @app-state)
               has-character #(= (:name (:character %)) character-name)]
-      (:id (first (filter has-character players)))))
+      (first (filter has-character players))))
+
+;; Returns the player id of the player who is using the supplied character. A
+;; convenience method to avoid typing (:id (data/player-of x)) over and over.
+(defn player-id-of [character-name]
+  (:id (player-of character-name)))

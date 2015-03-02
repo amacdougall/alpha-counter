@@ -26,6 +26,14 @@
                          :onClick handle-click}
           text)))))
 
+(defn- ability-button [[text f] owner]
+  (reify
+    om/IDisplayName
+    (display-name [_] "AbilityButton")
+    om/IRender
+    (render [_]
+      (dom/button #js {:className "button small" :onClick f} text))))
+
 (defn- toolbar [app owner]
   (reify
     om/IDisplayName
@@ -36,28 +44,8 @@
         (om/build two-stage-button {:text "Character Select" :on-click data/return-to-character-select!})
         (om/build two-stage-button {:text "Rematch" :on-click data/rematch!})
         (dom/button #js {:className "button small" :onClick data/undo!} "Undo")
-        (when (data/chosen? "Gwen")
-          (dom/div #js {:className "abilities"}
-            (dom/button #js {:className "button small" :onClick abilities/shadow-plague!}
-              "Shadow Plague")))
-        (when (data/chosen? "Gloria")
-          (dom/div #js {:className "abilities"}
-            (dom/button #js {:className "button small" :onClick abilities/overdose!}
-              "Overdose")
-            (dom/button #js {:className "button small" :onClick abilities/healing-touch!}
-              "Healing Touch")
-            (dom/button #js {:className "button small" :onClick abilities/bathed-in-moonlight!}
-              "Bathed in Moonlight")))
-        (when (data/chosen? "Argagarg")
-          (dom/div #js {:className "abilities"}
-            (dom/button #js {:className "button small" :onClick abilities/hex-of-murkwood!}
-             "Hex of Murkwood")))
-        (when (data/chosen? "Jaina")
-          (dom/div #js {:className "abilities"}
-            (dom/button #js {:className "button small" :onClick abilities/burning-vigor!}
-              "Burning Vigor")
-            (dom/button #js {:className "button small" :onClick abilities/burning-desperation!}
-              "Burning Desperation")))))))
+        (apply dom/div #js {:className "abilities"}
+               (om/build-all ability-button (abilities/active)))))))
 
 ;; Returns the player's health as a float ratio, between 1.0 and 0.0.
 (defn- health-ratio [player]
@@ -155,12 +143,12 @@
         ; health bars and combo running total ("VS" button when idle)
         (om/build combo (:running-total app))
         (apply dom/ul #js {:className "players"}
-          (om/build-all health
-            (mapv (fn [player] ; build health arguments per player
-                    {:player player
-                     :current-player-id (:current-player-id app)
-                     :select-player (partial data/select-player app player)})
-                  (:players app))))
+               (om/build-all health
+                 (mapv (fn [player] ; build health arguments per player
+                         {:player player
+                          :current-player-id (:current-player-id app)
+                          :select-player (partial data/select-player app player)})
+                       (:players app))))
         ; damage buttons
         (om/build damage-buttons nil)))))
 
