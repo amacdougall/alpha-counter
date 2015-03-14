@@ -53,6 +53,10 @@
 (defn burning-desperation! []
   (data/register-hit 4 (data/player-id-of "Jaina")))
 
+; persephone
+(defn loyal-pets! []
+  (data/register-hit 6 (opponent (data/player-id-of "Persephone"))))
+
 (defn active []
   (let [abilities
         [(when (data/chosen? "Gwen")
@@ -72,7 +76,9 @@
              [["Overeager Vigor" burning-vigor!]]
              [["Burning Vigor" burning-vigor!]
               (when (jaina-desperation?)
-                ["Burning Desperation" burning-desperation!])]))]]
+                ["Burning Desperation" burning-desperation!])]))
+         (when (and (data/chosen? "Persephone") (:ex (data/player-of "Persephone")))
+           [["Loyal Pets" loyal-pets!]])]]
     (->> abilities
       flatten
       (remove nil?)
