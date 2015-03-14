@@ -29,6 +29,9 @@
     (data/register-hit -4 self)
     (data/register-hit -4 target)))
 
+(defn pulsing-globes! []
+  (data/register-hit -3 (data/player-id-of "Gloria")))
+
 ; argagarg
 (defn hex-of-murkwood! []
   (data/register-hit 2 (opponent (data/player-id-of "Argagarg"))))
@@ -55,9 +58,11 @@
         [(when (data/chosen? "Gwen")
            [["Shadow Plague" shadow-plague!]])
          (when (data/chosen? "Gloria")
-           [["Overdose" overdose!]
-            ["Healing Touch" healing-touch!]
-            ["Bathed in Moonlight" bathed-in-moonlight!]])
+           (let [ex? (:ex (data/player-of "Gloria"))]
+             [["Overdose" overdose!]
+              ["Healing Touch" healing-touch!]
+              ["Bathed in Moonlight" bathed-in-moonlight!]
+              (when ex? ["Pulsing Globes" pulsing-globes!])]))
          (when (data/chosen? "Argagarg")
            (if (:ex (data/player-of "Argagarg"))
              [["EX of Murkwood" ex-of-murkwood!]
