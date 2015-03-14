@@ -1,9 +1,9 @@
 (ns alpha-counter.views.life-counter
   (:require [alpha-counter.data :as data]
-            [alpha-counter.views.util :refer [classes]]
+            [alpha-counter.views.util :refer [classes html-container]]
             [alpha-counter.abilities :as abilities]
             [om.core :as om :include-macros true]
-            [om.dom :as dom :include-macros true]))
+            [sablono.core :as html :refer-macros [html]]))
 
 ;; Takes a properties hash {:text string, :on-click fn}. When first clicked,
 ;; adds the "activated" class to the button for 2 seconds. If clicked again
@@ -22,9 +22,9 @@
             handle-click #(if activated
                             (on-click)
                             (activate!))]
-        (dom/button #js {:className (classes "button small" (when activated "activated"))
-                         :onClick handle-click}
-          text)))))
+        (html [:button {:class (classes "button small" (when activated "activated"))
+                        :on-click handle-click}
+               text])))))
 
 (defn- ability-button [[text f] owner]
   (reify
@@ -32,7 +32,7 @@
     (display-name [_] "AbilityButton")
     om/IRender
     (render [_]
-      (dom/button #js {:className "button small" :onClick f} text))))
+      (html [:button {:class "button small" :on-click f} text]))))
 
 (defn- toolbar [app owner]
   (reify
@@ -40,12 +40,14 @@
     (display-name [_] "ToolbarView")
     om/IRender
     (render [_]
-      (dom/div #js {:className "toolbar"}
-        (om/build two-stage-button {:text "Character Select" :on-click data/return-to-character-select!})
-        (om/build two-stage-button {:text "Rematch" :on-click data/rematch!})
-        (dom/button #js {:className "button small" :onClick data/undo!} "Undo")
-        (apply dom/div #js {:className "abilities"}
-               (om/build-all ability-button (abilities/active)))))))
+      (html
+        [:div {:class "toolbar"}
+         (om/build two-stage-button {:text "Character Select" :on-click data/return-to-character-select!})
+         (om/build two-stage-button {:text "Rematch" :on-click data/rematch!})
+         [:button {:class "button small" :on-click data/undo!} "Undo"]
+         (html-container
+           [:div {:class "abilities"}]
+           (om/build-all ability-button (abilities/active)))]))))
 
 ;; Returns the player's health as a float ratio, between 1.0 and 0.0.
 (defn- health-ratio [player]
@@ -84,33 +86,29 @@
             health-width ["width" (health-percent player)]
             health-offset (when left ["marginLeft" (damage-percent player)])
             health-style (apply js-obj (concat health-width health-offset))]
-        (dom/li #js {:className (classes "health" (when current "current"))
-                     :onClick select-player}
-          (dom/div #js {:className "health__name"}
-            (str (when (:ex player) "EX ") (:name (:character player))))
-          (dom/div #js {:className "health__health-bar"}
-            (dom/div #js {:className "health__damage"} "")
-            (dom/div #js {:className "health__health" :style health-style} "")
-            (dom/div #js {:className "health__number"} (:health player))))))))
+        (html
+          [:li {:class (classes "health" (when current "current"))
+                :onClick select-player}
+           [:div {:class "health__name"}
+            (str (when (:ex player) "EX ") (:name (:character player)))]
+           [:div {:class "health__health-bar"}
+            [:div {:class "health__damage"} ""]
+            [:div {:class "health__health" :style health-style} ""]
+            [:div {:class "health__number"} (:health player)]]])))))
 
-;; List of damage buttons. Uses no props, but om/build expects at least one, so
-;; just supply nil. Automatically sets up buttons to send hits to the
-;; appropriate channels.
-; TODO: Remove the need to pass nil; maybe define this as a partial?
-(defn- damage-buttons [_ owner]
+;; A button which registers a hit for the supplied damage amount when clicked.
+(defn- damage-button [n owner]
   (reify
     om/IDisplayName
-    (display-name [_] "DamageButtonsView")
+    (display-name [_] "DamageButtonView")
     om/IRender
     (render [_]
-      (apply dom/ul #js {:className "damage-buttons"}
-             (map (fn [n]
-                    (dom/li nil
-                      (dom/button
-                        #js {:className "small button"
-                             :onClick #(data/register-hit n)}
-                        (if (pos? n) n (str "+" (Math/abs n))))))
-                  data/damage-amounts)))))
+      (let [text (if (pos? n) n (str "+" (Math/abs n)))]
+      (html
+        [:li
+         [:button {:class "small button"
+                   :on-click #(data/register-hit n)}
+          text]])))))
 
 ;; When a combo is in progress, display the running total; otherwise, displays
 ;; the "VS" symbol between the two health panes.
@@ -125,9 +123,9 @@
             damage-text (str (when is-healing "+") (Math/abs running-total))
             text (if idle "VS" damage-text)
             active-state-name (cond is-healing "healing", (not idle) "damage")]
-            ; active-state-name is nil if idle
-        (dom/div #js {:className (classes "combo" active-state-name)}
-          (dom/div #js {:className "combo__text"} text))))))
+        ; active-state-name is nil if idle
+        (html [:div {:class (classes "combo" active-state-name)}
+               [:div {:class "combo__text"} text]])))))
 
 ;; Life counter view. Includes the combo damage readout, a health component for
 ;; each player, damage buttons, and a toolbar.
@@ -137,18 +135,21 @@
     (display-name [_] "LifeCounterView")
     om/IRender
     (render [_]
-      (dom/div #js {:className "life-counter"}
-        ; toolbar
-        (om/build toolbar app)
-        ; health bars and combo running total ("VS" button when idle)
-        (om/build combo (:running-total app))
-        (apply dom/ul #js {:className "players"}
-               (om/build-all health
-                 (mapv (fn [player] ; build health arguments per player
-                         {:player player
-                          :current-player-id (:current-player-id app)
-                          :select-player (partial data/select-player app player)})
-                       (:players app))))
-        ; damage buttons
-        (om/build damage-buttons nil)))))
-
+      (html
+        [:div {:class "life-counter"}
+         ; toolbar
+         (om/build toolbar app)
+         ; health bars and combo running total ("VS" button when idle)
+         (om/build combo (:running-total app))
+         (html-container
+           [:ul {:class "players"}]
+           (om/build-all health
+             (mapv (fn [player] ; build health arguments per player
+                     {:player player
+                      :current-player-id (:current-player-id app)
+                      :select-player (partial data/select-player app player)})
+                   (:players app))))
+         ; damage buttons
+         (html-container
+           [:ul {:class "damage-buttons"}]
+           (om/build-all damage-button data/damage-amounts))]))))

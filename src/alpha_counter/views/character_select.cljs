@@ -1,19 +1,18 @@
 (ns alpha-counter.views.character-select
   (:require [alpha-counter.data :as data]
-            [alpha-counter.views.util :refer [classes]]
-            [om.core :as om :include-macros true]
-            [om.dom :as dom :include-macros true]))
+            [sablono.core :as html :refer-macros [html]]
+            [alpha-counter.views.util :refer [classes html-container]]
+            [om.core :as om :include-macros true]))
 
 ;; Given a player and a character, returns an element which selects that
 ;; character on click.
 (defn- character->icon [player character]
   (let [selected? (= (:name character) (-> player :character :name))
         button-classes (classes "small button" (when selected? "selected"))]
-    (dom/li nil
-      (dom/button
-        #js {:className button-classes
-             :onClick #(data/choose-character player character)}
-        (str (when (and selected? (:ex player)) "EX ") (:name character))))))
+    (html [:li
+           [:button {:class button-classes
+                     :on-click #(data/choose-character player character)}
+            (str (when (and selected? (:ex player)) "EX ") (:name character))]])))
 
 ;; Given a player, returns a vec of character icon elements which select that
 ;; character for that player on click.
@@ -31,13 +30,13 @@
     (render [_]
       (let [p1 (-> app :players first)
             p2 (-> app :players second)]
-        (dom/div #js {:className "character-select"}
-          (dom/h1 nil "Character Select")
-          (dom/h2 nil "Player One")
-          (apply dom/ul #js {:className "list"} (player->icons p1))
-          (dom/h2 nil "Player Two")
-          (apply dom/ul #js {:className "list"} (player->icons p2))
-          (dom/button #js {:className "button"
-                           :onClick #(data/ready! app)
-                           :disabled (some #(nil? (:character %)) [p1 p2])}
-            "Start!"))))))
+        (html [:div {:class "character-select"}
+               [:h1 nil "Character Select"]
+               [:h2 nil "Player One"]
+               (html-container [:ul {:class "list"}] (player->icons p1))
+               [:h2 nil "Player Two"]
+               (html-container [:ul {:class "list"}] (player->icons p2))
+               [:button {:class "button"
+                         :on-click #(data/ready! app)
+                         :disabled (some #(nil? (:character %)) [p1 p2])}
+                "Start!"]])))))
