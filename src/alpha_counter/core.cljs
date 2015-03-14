@@ -4,12 +4,8 @@
             [om.core :as om :include-macros true]
             [FastClick]))
 
-(enable-console-print!)
+(.attach js/FastClick (.-body js/document))
 
-(defn main []
-  (.attach js/FastClick (.-body js/document))
-  (om/root views/main
-    data/app-state
-    {:target (. js/document (getElementById "app"))}))
-
-(main)
+(om/root views/main
+  data/app-state
+  {:target (. js/document (getElementById "app"))})
