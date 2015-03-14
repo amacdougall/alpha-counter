@@ -64,10 +64,9 @@
               ["Bathed in Moonlight" bathed-in-moonlight!]
               (when ex? ["Pulsing Globes" pulsing-globes!])]))
          (when (data/chosen? "Argagarg")
-           (if (:ex (data/player-of "Argagarg"))
-             [["EX of Murkwood" ex-of-murkwood!]
-              ["Hex of Murkwood" hex-of-murkwood!]]
-             [["Hex of Murkwood" hex-of-murkwood!]]))
+           (let [ex? (:ex (data/player-of "Argagarg"))]
+             [(when ex? ["EX of Murkwood" ex-of-murkwood!])
+              ["Hex of Murkwood" hex-of-murkwood!]]))
          (when (data/chosen? "Jaina")
            (if (:ex (data/player-of "Jaina"))
              [["Overeager Vigor" burning-vigor!]]
