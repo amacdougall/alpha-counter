@@ -1,10 +1,6 @@
 (ns alpha-counter.abilities
   (:require [alpha-counter.data :as data]))
 
-;; True if Jaina's health is low enough to use Burning Desperation.
-(defn jaina-desperation? []
-  (<= (:health (data/player-of "Jaina")) 35))
-
 (defn- player-ids []
   (map :id (:players @data/app-state)))
 
@@ -44,6 +40,10 @@
   (data/register-hit 5 (opponent (data/player-id-of "Argagarg"))))
 
 ; jaina
+;; True if Jaina's health is low enough to use Burning Desperation.
+(defn jaina-desperation? []
+  (<= (:health (data/player-of "Jaina")) 35))
+
 (defn burning-vigor! []
   (data/register-hit 3 (data/player-id-of "Jaina")))
 
@@ -65,8 +65,7 @@
              [["Hex of Murkwood" hex-of-murkwood!]]))
          (when (data/chosen? "Jaina")
            (if (:ex (data/player-of "Jaina"))
-             [["Burning Vigor" burning-vigor!]
-              ["Burning Desperation" burning-desperation!]]
+             [["Overeager Vigor" burning-vigor!]]
              [["Burning Vigor" burning-vigor!]
               (when (jaina-desperation?)
                 ["Burning Desperation" burning-desperation!])]))]]
