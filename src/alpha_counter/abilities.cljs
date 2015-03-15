@@ -11,6 +11,10 @@
 (defn shadow-plague! []
   (data/register-hit 2 (data/player-id-of "Gwen")))
 
+;; The self-damage effect of her Desperate Strike destiny card.
+(defn desperation! []
+  (data/register-hit 4 (data/player-id-of "Gwen")))
+
 ; gloria
 (defn overdose! []
   ; TODO: handle 2v1 and 2v2, where only one opponent is on the front line
@@ -60,7 +64,9 @@
 (defn active []
   (let [abilities
         [(when (data/chosen? "Gwen")
-           [["Shadow Plague" shadow-plague!]])
+           (let [ex? (:ex (data/player-of "Gwen"))]
+           [["Shadow Plague" shadow-plague!]
+            (when ex? ["Desperation" desperation!])]))
          (when (data/chosen? "Gloria")
            (let [ex? (:ex (data/player-of "Gloria"))]
              [["Overdose" overdose!]
