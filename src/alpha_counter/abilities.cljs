@@ -61,7 +61,20 @@
 (defn loyal-pets! []
   (data/register-hit 6 (opponent (data/player-id-of "Persephone"))))
 
+; vendetta
+;; Applies a single point of poison damage, so you'll have to tap it once for
+;; each stack. I was thinking of using a debuff/tick mechanism to handle
+;; stacking, but that raises issues of its own: you can't undo a poison debuff
+;; with the undo button, for instance, and "Add Poison" and "Remove Poison"
+;; would be an awkward pair of buttons, and there's no indication of how many
+;; debuffs the opponent has, and so on. Just tapping four times is a small
+;; price.
+(defn poison! []
+  (data/register-hit 1 (opponent (data/player-id-of "Vendetta"))))
+
 (defn active []
+  ; TODO: refactor this if we touch it again; but as long as it works, it's
+  ; okay as it is.
   (let [abilities
         [(when (data/chosen? "Gwen")
            (let [ex? (:ex (data/player-of "Gwen"))]
@@ -84,7 +97,9 @@
               (when (jaina-desperation?)
                 ["Burning Desperation" burning-desperation!])]))
          (when (and (data/chosen? "Persephone") (:ex (data/player-of "Persephone")))
-           [["Loyal Pets" loyal-pets!]])]]
+           [["Loyal Pets" loyal-pets!]])
+         (when (and (data/chosen? "Vendetta") (:ex (data/player-of "Vendetta")))
+           [["Poison" poison!]])]]
     (->> abilities
       flatten
       (remove nil?)
