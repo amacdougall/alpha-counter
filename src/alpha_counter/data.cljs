@@ -1,3 +1,6 @@
+;; Namespace containing data lookup and manipulation functions. Note that as a
+;; rule, any function which returns something from the app state returns a
+;; cursor to it; this include functions such as players and current-team.
 (ns alpha-counter.data
   (:require [alpha-counter.channels :as channels]
             [om.core :as om :include-macros true]
@@ -46,11 +49,33 @@
 
 (declare app-state channels)
 
+;; App state consists of the following keys:
+;;
+;; * characters-selected: true if character select is complete.
+;; * teams: a vector of team objects; see below.
+;; * current-team-id: the keyword id of the currently active team.
+;; * running-total: the running total of the current combo.
+;; * history: a vector of `[player-id n]` pairs representing every hit which
+;;   has occurred. Recorded by register-hit!.
+;;
+;; Each team is a map in this form:
+;;
+;; ```
+;; {:id :team-one
+;;  :players [{:id :player-one, :health 90, :ex false
+;;             :character {:name "Grave", :health 90}}]}
+;; ```
 (defonce app-state
   (atom
-    {:characters-selected false ; when true, displays the main life counter
-     :players [{:id :player-one} {:id :player-two}]
-     :current-player-id :player-one
+    {:characters-selected false
+     ; TODO: remove assumption that teams start with players
+     :teams [{:id :team-one
+              :current-player-id :player-one
+              :players [{:id :player-one}]}
+             {:id :team-two
+              :current-player-id :player-two
+              :players [{:id :player-two}]}]
+     :current-team-id :team-one
      :running-total 0
      :history []}))
 
@@ -62,13 +87,11 @@
 (defonce channels
   (atom nil))
 
-;; Returns a reference cursor for the app state. To the best of my knowledgely,
-;; if you aren't planning to transact on the cursor, you may as well just deref
-;; it. om/value vs @app-state is probably not going to be a big deal.
+;; Returns a cursor for the app state as a whole.
 (defn app-cursor []
   (om/ref-cursor (om/root-cursor app-state)))
 
-;; Returns a reference cursor for the damage history.
+;; Returns a cursor for the damage history.
 (defn history-cursor []
   (om/ref-cursor (:history (om/root-cursor app-state))))
 
@@ -77,27 +100,81 @@
 (defn channels-for [player-id]
   (player-id @channels))
 
-;; Sets :current-player-id to the id of the supplied player.
-(defn select-player [app player]
-  (om/update! app [:current-player-id] (:id player)))
+;; Sets :current-team-id to the id of the supplied team.
+(defn select-team! [team]
+  (om/update! (app-cursor) [:current-team-id] (:id team)))
 
+;; If the supplied team has two players, swaps which one is selected.
+(defn tag! [team]
+  (when-not (zero? (count team))
+    (let [current (:current-player-id team)
+          bench (first (remove #{current} (map :id team)))]
+      (om/update! team [:current-player-id] bench))))
+
+;; Returns the maximum health of the player, based on the chosen character.
 (defn max-health [player]
   (let [character (:character player)]
     (if (:ex player)
       (or (:ex-health character) (:health character))
       (:health character))))
 
+;; Given an id and a map, returns true if the map has an :id key whose value is
+;; equal to the id. Use as a filter method with `(partial id-match :k)`.
+(defn- id-match [id m]
+  (= (:id m) id))
+
+;; Returns the current team.
+(defn current-team []
+  (let [app (app-cursor)
+        id (:current-team-id app)]
+    (om/ref-cursor (first (filter (partial id-match id) (:teams app))))))
+
+;; Returns the current player of the current team; in other words, the player
+;; who will receive the next hit.
+(defn current-player []
+  (let [team (current-team)
+        id (:current-player-id team)]
+    (first (filter (partial id-match id) (:players team)))))
+
+;; Returns a list of all players in the game. Note that the list is not a
+;; cursor in itself, since there is no such list embodied in the app-state.
+(defn players []
+  (let [app (app-cursor)
+        teams (get app :teams)
+        players (flatten (map #(get % :players) teams))]
+    players))
+
+;; Returns a vec of all teams in the game.
+(defn teams []
+  (get (app-cursor) :teams))
+
+;; Returns the team of the supplied player or player id.
+(defmulti team-of keyword?)
+
+(defmethod team-of false [player]
+  (team-of (:id player)))
+
+(defmethod team-of true [id]
+  (let [has-player #(some (partial id-match id) (:players %))]
+    (first (filter has-player (teams)))))
+
+;; Convenience method which returns the id of the team of the supplied player.
+(defn team-id-of [player]
+  (:id (team-of player)))
+
 ;; Given a damage amount and optionally a player id, registers a hit on that
-;; player for that amount. If id is omitted, applies the hit to the current
-;; player.
-(defn register-hit
+;; player for that amount, by putting it on the player's hits channel. If id is
+;; omitted, applies the hit to the current player.
+(defn register-hit!
   ([n]
-   (register-hit n (:current-player-id @app-state)))
+   (register-hit! n (:id (current-player))))
   ([n id]
    (let [hits (:hits (channels-for id))]
      (put! hits n)
      (om/transact! (history-cursor) #(conj % [id n])))))
 
+;; Reverses the most recently registered hit, incidentally selecting the target
+;; team and player.
 (defn undo! []
   (if-not (empty? (om/value (history-cursor)))
     (om/transact! (om/root-cursor app-state)
@@ -105,18 +182,26 @@
         (let [[id n] (peek history)
               hits (:hits (channels-for id))]
           (put! hits (- n))
+          ; TODO: set current player within the team as well
           (assoc app
-                 :current-player-id id
+                 :current-team-id (team-of id)
                  :history (pop history)))))))
 
 ;; Subtracts n health from the player. If n is negative, this will heal the
 ;; player, but only up to the maximum health of the player's character.
-(defn apply-damage [player n]
+(defn apply-damage! [player n]
   (om/transact! player
     (fn [player]
       (let [health (:health player)]
         (assoc player :health (min (- health n) (max-health player)))))))
 
+;; Builds hits, running-total, and damage channels for the supplied player
+;; cursor, returning a map `{:hits ch, :running-total ch, :damage ch}`. Has the
+;; side effect of starting loops over the running-total and damage channels, so
+;; invoke cautiously.
+;;
+;; TODO: move the loop setup to another method. I'm not even giving this a bang
+;; name, because it's so self-evident that it needs to be refactored instead.
 (defn- player->channels [player]
   (let [hits (chan)
         mult (mult hits)
@@ -136,7 +221,7 @@
     ; apply damage to player as it comes off the delay->trickle chain
     (go-loop []
       (when-let [v (<! damage)]
-        (apply-damage player v)
+        (apply-damage! player v)
         (recur)))
 
     {:hits hits
@@ -144,58 +229,62 @@
      :damage damage}))
 
 ;; Resets character selection and returns to the character screen.
+; TODO: get this to work with team system; for now, can only select once
 (defn return-to-character-select! []
   (om/transact! (app-cursor)
-    (fn [app]
-      (assoc app
-             :characters-selected false
-             :running-total 0))))
+    #(assoc % :characters-selected false
+              :teams []
+              :running-total 0)))
 
-;; Returns a channel hash appropriate for the channels atom.
-(defn- build-channels [{:keys [players]}]
+;; Returns a channel hash appropriate for the channels atom. Starts go loops
+;; over each channel. See player->channels.
+(defn- build-channels! [players]
   (apply assoc {} (interleave (map :id players) (map player->channels players))))
 
+;; Clears all undo history.
 (defn- clear-history! []
   (om/update! (history-cursor) []))
 
-;; Returns the player, at full health.
+;; Returns the player, at full health. Returns the player TO full health.
 (defn- reset-health [player]
   (assoc player :health (max-health player)))
 
+;; Returns the team, with all players set to full health.
+(defn- reset-team-health [team]
+  (assoc team :players (mapv reset-health (:players team))))
+
 ;; Sets the app ready. Rebuilds channels, sets players to full health.
 ; TODO: rename; this is a bit vague.
-(defn ready! [app]
-  (reset! channels (build-channels app)) ; old channels can just be GCed
-  (clear-history!)
-  (om/transact! app #(assoc %
-                            :characters-selected true
-                            :players (mapv reset-health (:players %)))))
+(defn ready! []
+  (let [app (app-cursor)]
+    (reset! channels (build-channels! (players))) ; old channels can just be GCed
+    (clear-history!)
+    (om/transact! app #(assoc % :characters-selected true
+                                :teams (mapv reset-team-health (:teams %))))))
 
 ;; Returns all players to full health.
 (defn rematch! []
   (clear-history!)
-  (om/transact! (app-cursor) #(assoc % :players (mapv reset-health (:players %)))))
+  (om/transact! (app-cursor) #(assoc % :teams (mapv reset-team-health (:teams %)))))
 
 ; Character Select
 ;; Initializes the player by selecting the character. If that character is
 ;; already selected, toggles EX status.
-(defn choose-character [player character]
+(defn choose-character! [player character]
   (if (= (:character player) character)
     (om/update! player [:ex] (not (:ex player)))
     (om/transact! player #(assoc % :character character, :ex false))))
 
+;; Returns true if the supplied character has been chosen by any player.
 (defn chosen? [character-name]
-  (let [players (:players @app-state)
-        ->name #(:name (:character %))
-        names (map ->name players)]
-    (some (partial = character-name) names)))
+  (let [chosen-characters (map #(-> % :character :name) (players))]
+    (some (partial = character-name) chosen-characters)))
 
 ;; Returns the player who is using the supplied character. Note that mirror
 ;; matches are fundamentally unsupported at the moment.
 (defn player-of [character-name]
-  (let [players (:players @app-state)
-              has-character #(= (:name (:character %)) character-name)]
-      (first (filter has-character players))))
+  (let [has-character #(= (-> % :character :name) character-name)]
+      (first (filter has-character (players)))))
 
 ;; Returns the player id of the player who is using the supplied character. A
 ;; convenience method to avoid typing (:id (data/player-of x)) over and over.

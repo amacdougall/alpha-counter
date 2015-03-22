@@ -11,7 +11,7 @@
         button-classes (classes "small button" (when selected? "selected"))]
     (html [:li
            [:button {:class button-classes
-                     :on-click #(data/choose-character player character)}
+                     :on-click #(data/choose-character! player character)}
             (str (when (and selected? (:ex player)) "EX ") (:name character))]])))
 
 ;; Given a player, returns a vec of character icon elements which select that
@@ -28,8 +28,10 @@
     (display-name [_] "CharacterSelectView")
     om/IRender
     (render [_]
-      (let [p1 (-> app :players first)
-            p2 (-> app :players second)]
+      ; TODO: enable for two-player teams; right now it assumes that each
+      ; team has exactly one player.
+      (let [p1 (-> app :teams first :players first)
+            p2 (-> app :teams second :players first)]
         (html [:div {:class "character-select"}
                [:h1 nil "Character Select"]
                [:h2 nil "Player One"]
@@ -37,6 +39,6 @@
                [:h2 nil "Player Two"]
                (html-container [:ul {:class "list"}] (player->icons p2))
                [:button {:class "button"
-                         :on-click #(data/ready! app)
+                         :on-click data/ready!
                          :disabled (some #(nil? (:character %)) [p1 p2])}
                 "Start!"]])))))

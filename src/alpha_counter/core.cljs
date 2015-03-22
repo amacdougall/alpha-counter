@@ -1,4 +1,4 @@
-(ns alpha-counter.core
+(ns ^:figwheel-always alpha-counter.core
   (:require [alpha-counter.data :as data]
             [alpha-counter.views.main :as views]
             [om.core :as om :include-macros true]

@@ -13,7 +13,7 @@
     om/IDisplayName
     (display-name [_] "TwoStageButton")
     om/IInitState
-    (init-state [_] {:activated false}) ; when true, next click will return to char select
+    (init-state [_] {:activated false}) ; when true, next click will execute on-click
     om/IRenderState
     (render-state [_ {:keys [activated]}]
       (let [activate! (fn []
@@ -67,34 +67,46 @@
 (defn- damage-percent [player]
   (-> (- 1 (health-ratio player)) (* 100) Math/floor (str "%")))
 
-;; Health bar view. Expects props {:player p, :current-player-id k,
-;; :select-player fn}. Includes character name, current life as a number, and
-;; health and damage bars. The health bar shrinks as the player takes damage,
-;; progressively revealing the damage bar.
-(defn- health [props owner]
+;; Health bar view for a single player. Includes character name, current life
+;; as a number, and health and damage bars. The health bar shrinks as the
+;; player takes damage, progressively revealing the damage bar.
+(defn- player-health [player owner]
   (reify
     om/IDisplayName
-    (display-name [_] "HealthView")
+    (display-name [_] "PlayerHealth")
     om/IRender
     (render [_]
-      (let [{:keys [player current-player-id select-player]} props
-            ; if this is the left-hand player, the health bar should be aligned
-            ; right as it shrinks; I'd prefer to do this in CSS, I just don't
-            ; know how. TODO: learn how. Maybe dwab or Rachel can help.
-            left (= (:id player) :player-one)
-            current (= (:id player) current-player-id)
+      (let [app (om/observe owner (data/app-cursor))
+            team (data/team-of player)
+            left (= (:id team) :team-one)
+            current (and (= (:id player) (:current-player-id team))
+                         (= (:id team) (:current-team-id app)))
             health-width ["width" (health-percent player)]
             health-offset (when left ["marginLeft" (damage-percent player)])
             health-style (apply js-obj (concat health-width health-offset))]
         (html
-          [:li {:class (classes "health" (when current "current"))
-                :onClick select-player}
+          [:li {:class (classes "health" (when current "current"))}
            [:div {:class "health__name"}
             (str (when (:ex player) "EX ") (:name (:character player)))]
            [:div {:class "health__health-bar"}
             [:div {:class "health__damage"} ""]
             [:div {:class "health__health" :style health-style} ""]
             [:div {:class "health__number"} (:health player)]]])))))
+
+(defn- team-health [team owner]
+  (reify
+    om/IDisplayName
+    (display-name [_] "TeamHealth")
+    om/IRender
+    (render [_]
+      (let [app (om/observe owner (data/app-cursor))
+            current (= (:id team) (:current-team-id app))]
+        (html-container
+          [:div {:class "team-health"
+                 :on-click (if current
+                             (partial data/tag! team)
+                             (partial data/select-team! team))}]
+          (om/build-all player-health (:players team)))))))
 
 ;; A button which registers a hit for the supplied damage amount when clicked.
 (defn- damage-button [n owner]
@@ -107,7 +119,7 @@
       (html
         [:li
          [:button {:class "small button"
-                   :on-click #(data/register-hit n)}
+                   :on-click #(data/register-hit! n)}
           text]])))))
 
 ;; When a combo is in progress, display the running total; otherwise, displays
@@ -142,13 +154,8 @@
          ; health bars and combo running total ("VS" button when idle)
          (om/build combo (:running-total app))
          (html-container
-           [:ul {:class "players"}]
-           (om/build-all health
-             (mapv (fn [player] ; build health arguments per player
-                     {:player player
-                      :current-player-id (:current-player-id app)
-                      :select-player (partial data/select-player app player)})
-                   (:players app))))
+           [:ul {:class "teams"}]
+           (om/build-all team-health (:teams app)))
          ; damage buttons
          (html-container
            [:ul {:class "damage-buttons"}]
