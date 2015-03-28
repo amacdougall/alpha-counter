@@ -37,7 +37,7 @@
 (defn- toolbar [app owner]
   (reify
     om/IDisplayName
-    (display-name [_] "ToolbarView")
+    (display-name [_] "Toolbar")
     om/IRender
     (render [_]
       (html
@@ -67,8 +67,8 @@
 (defn- damage-percent [player]
   (-> (- 1 (health-ratio player)) (* 100) Math/floor (str "%")))
 
-;; Health bar view for a single player. Includes character name, current life
-;; as a number, and health and damage bars. The health bar shrinks as the
+;; Health bar component for a single player. Includes character name, current
+;; life as a number, and health and damage bars. The health bar shrinks as the
 ;; player takes damage, progressively revealing the damage bar.
 (defn- player-health [player owner]
   (reify
@@ -91,7 +91,7 @@
             [:div {:class "health__health" :style health-style} ""]]
            [:div {:class "health__number"} (:health player)]])))))
 
-;; Health bar view for a team. If there are two players on the team, the
+;; Health bar component for a team. If there are two players on the team, the
 ;; benched player's health bar will have the "bench" class. If one player is a
 ;; Dramatic Battle boss, the player's health bar will have the "boss" class.
 ; TODO: make this true
@@ -115,7 +115,7 @@
 (defn- damage-button [n owner]
   (reify
     om/IDisplayName
-    (display-name [_] "DamageButtonView")
+    (display-name [_] "DamageButton")
     om/IRender
     (render [_]
       (let [text (if (pos? n) n (str "+" (Math/abs n)))]
@@ -130,7 +130,7 @@
 (defn- combo [running-total owner]
   (reify
     om/IDisplayName
-    (display-name [_] "ComboView")
+    (display-name [_] "Combo")
     om/IRender
     (render [_]
       (let [idle (#{0 :reset} running-total) ; false if combo is in progress
@@ -142,12 +142,12 @@
         (html [:div {:class (classes "combo" active-state-name)}
                [:div {:class "combo__text"} text]])))))
 
-;; Life counter view. Includes the combo damage readout, a health component for
-;; each player, damage buttons, and a toolbar.
+;; Life counter component. Includes the combo damage readout, a health
+;; component for each player, damage buttons, and a toolbar.
 (defn main [app owner]
   (reify
     om/IDisplayName
-    (display-name [_] "LifeCounterView")
+    (display-name [_] "LifeCounter")
     om/IRender
     (render [_]
       (html

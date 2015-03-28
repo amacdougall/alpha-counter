@@ -19,13 +19,13 @@
 (defn- player->icons [player]
   (mapv (partial character->icon player) data/characters))
 
-;; Top-level view which displays a character icon grid for each player,
+;; Top-level component which displays a character icon grid for each player,
 ;; followed by a Ready button. The Ready button is only enabled when both
 ;; players have selected a character.
 (defn main [app owner]
   (reify
     om/IDisplayName
-    (display-name [_] "CharacterSelectView")
+    (display-name [_] "CharacterSelect")
     om/IRender
     (render [_]
       ; TODO: enable for two-player teams; right now it assumes that each
