@@ -1,50 +1,51 @@
 (ns alpha-counter.abilities
   (:require [alpha-counter.data :as data]))
 
-(defn- player-ids []
-  (map :id (:players @data/app-state)))
-
+;; Returns the current player id of the opposing team.
 (defn- opponent [player-id]
-  (first (remove #{player-id} (player-ids))))
+  (let [team-id (data/team-id-of player-id)
+        own-team? #(= (:id %) team-id)
+        rival-team (first (remove own-team? (data/teams)))]
+    (:current-player-id rival-team)))
 
 ; gwen
 (defn shadow-plague! []
-  (data/register-hit 2 (data/player-id-of "Gwen")))
+  (data/register-hit! 2 (data/player-id-of "Gwen")))
 
 ;; The self-damage effect of her Desperate Strike destiny card.
 (defn desperation! []
-  (data/register-hit 4 (data/player-id-of "Gwen")))
+  (data/register-hit! 4 (data/player-id-of "Gwen")))
 
 ; gloria
 (defn overdose! []
   ; TODO: handle 2v1 and 2v2, where only one opponent is on the front line
   (let [self (data/player-id-of "Gloria")
         target (opponent self)]
-    (data/register-hit 10 self)
-    (js/setTimeout #(data/register-hit 10 target) 1000)))
+    (data/register-hit! 10 self)
+    (js/setTimeout #(data/register-hit! 10 target) 1000)))
 
 (defn healing-touch! []
-  (data/register-hit -4 (data/player-id-of "Gloria")))
+  (data/register-hit! -4 (data/player-id-of "Gloria")))
 
 (defn bathed-in-moonlight! []
   ; TODO: handle 2v1 and 2v2, where only one opponent is on the front line
   (let [self (data/player-id-of "Gloria")
         target (opponent self)]
-    (data/register-hit -4 self)
-    (data/register-hit -4 target)))
+    (data/register-hit! -4 self)
+    (data/register-hit! -4 target)))
 
 (defn pulsing-globes! []
-  (data/register-hit -3 (data/player-id-of "Gloria")))
+  (data/register-hit! -3 (data/player-id-of "Gloria")))
 
 ; argagarg
 (defn hex-of-murkwood! []
-  (data/register-hit 2 (opponent (data/player-id-of "Argagarg"))))
+  (data/register-hit! 2 (opponent (data/player-id-of "Argagarg"))))
 
 ;; The EX version of Hex of Murkwood, which deals 5 damage. EX Argagarg also
 ;; gets the original version, because with Bubble Shield up, his hex does an
 ;; extra 2.
 (defn ex-of-murkwood! []
-  (data/register-hit 5 (opponent (data/player-id-of "Argagarg"))))
+  (data/register-hit! 5 (opponent (data/player-id-of "Argagarg"))))
 
 ; jaina
 ;; True if Jaina's health is low enough to use Burning Desperation.
@@ -52,14 +53,14 @@
   (<= (:health (data/player-of "Jaina")) 35))
 
 (defn burning-vigor! []
-  (data/register-hit 3 (data/player-id-of "Jaina")))
+  (data/register-hit! 3 (data/player-id-of "Jaina")))
 
 (defn burning-desperation! []
-  (data/register-hit 4 (data/player-id-of "Jaina")))
+  (data/register-hit! 4 (data/player-id-of "Jaina")))
 
 ; persephone
 (defn loyal-pets! []
-  (data/register-hit 6 (opponent (data/player-id-of "Persephone"))))
+  (data/register-hit! 6 (opponent (data/player-id-of "Persephone"))))
 
 ; vendetta
 ;; Applies a single point of poison damage, so you'll have to tap it once for
@@ -70,7 +71,7 @@
 ;; debuffs the opponent has, and so on. Just tapping four times is a small
 ;; price.
 (defn poison! []
-  (data/register-hit 1 (opponent (data/player-id-of "Vendetta"))))
+  (data/register-hit! 1 (opponent (data/player-id-of "Vendetta"))))
 
 (defn active []
   ; TODO: refactor this if we touch it again; but as long as it works, it's
