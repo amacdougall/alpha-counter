@@ -179,12 +179,19 @@
   (if-not (empty? (om/value (history-cursor)))
     (om/transact! (om/root-cursor app-state)
       (fn [{:keys [history] :as app}]
-        (let [[id n] (peek history)
-              hits (:hits (channels-for id))]
+        (let [[player-id n] (peek history)
+              hits (:hits (channels-for player-id))
+              target-team-id (team-id-of player-id)
+              select-player (fn [{:keys [team-id] :as team}]
+                              (if (= team-id target-team-id)
+                                (assoc team :current-player-id player-id)
+                                team))]
+          ; reverse the hit
           (put! hits (- n))
-          ; TODO: set current player within the team as well
+          ; set current team, and current player within the relevant team
           (assoc app
-                 :current-team-id (team-of id)
+                 :current-team-id target-team-id
+                 :teams (mapv select-player (:teams app))
                  :history (pop history)))))))
 
 ;; Subtracts n health from the player. If n is negative, this will heal the
