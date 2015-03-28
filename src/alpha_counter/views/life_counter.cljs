@@ -78,21 +78,23 @@
     (render [_]
       (let [app (om/observe owner (data/app-cursor))
             team (data/team-of player)
-            left (= (:id team) :team-one)
             current (and (= (:id player) (:current-player-id team))
                          (= (:id team) (:current-team-id app)))
             health-width ["width" (health-percent player)]
-            health-offset (when left ["marginLeft" (damage-percent player)])
-            health-style (apply js-obj (concat health-width health-offset))]
+            health-style #js {"width" (health-percent player)}]
         (html
-          [:li {:class (classes "health" (when current "current"))}
+          [:div {:class (classes "health" (when current "current"))}
            [:div {:class "health__name"}
             (str (when (:ex player) "EX ") (:name (:character player)))]
            [:div {:class "health__health-bar"}
             [:div {:class "health__damage"} ""]
-            [:div {:class "health__health" :style health-style} ""]
-            [:div {:class "health__number"} (:health player)]]])))))
+            [:div {:class "health__health" :style health-style} ""]]
+           [:div {:class "health__number"} (:health player)]])))))
 
+;; Health bar view for a team. If there are two players on the team, the
+;; benched player's health bar will have the "bench" class. If one player is a
+;; Dramatic Battle boss, the player's health bar will have the "boss" class.
+; TODO: make this true
 (defn- team-health [team owner]
   (reify
     om/IDisplayName
@@ -100,9 +102,10 @@
     om/IRender
     (render [_]
       (let [app (om/observe owner (data/app-cursor))
-            current (= (:id team) (:current-team-id app))]
+            current (= (:id team) (:current-team-id app))
+            right (= (:id team) :team-two)]
         (html-container
-          [:div {:class "team-health"
+          [:div {:class (classes "team-health" (when right "right"))
                  :on-click (if current
                              (partial data/tag! team)
                              (partial data/select-team! team))}]
@@ -149,14 +152,11 @@
     (render [_]
       (html
         [:div {:class "life-counter"}
-         ; toolbar
          (om/build toolbar app)
-         ; health bars and combo running total ("VS" button when idle)
-         (om/build combo (:running-total app))
-         (html-container
-           [:ul {:class "teams"}]
-           (om/build-all team-health (:teams app)))
-         ; damage buttons
+         [:div {:class "counters"}
+          (om/build team-health (first (:teams app)))
+          (om/build combo (:running-total app))
+          (om/build team-health (second (:teams app)))]
          (html-container
            [:ul {:class "damage-buttons"}]
            (om/build-all damage-button data/damage-amounts))]))))

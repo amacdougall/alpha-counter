@@ -11,14 +11,24 @@ $background-color: #fff0a5;
 
 $toolbar-button-border-radius: 8px;
 
+$content-horizontal-padding: 2vw;
+
 $health-bar-height: 30px;
 $health-bar-color: $warning-color;
 $health-bar-damage-color: $alert-color;
 $health-bar-border-radius: 8px;
 
+$combo-width: 6vw;
+$combo-height: 6vw;
+$combo-underlap: 1vw;
 $combo-color-idle: $success-color;
 $combo-color-healing: #2f7289;
 $combo-color-damage: $alert-color;
+
+$team-health-width: 50vw - ($combo-width / 2) - $content-horizontal-padding + $combo-underlap;
+
+// z-index presets
+$z-index-front: 10; // we'll invent more as needed!
 
 body {
   background-color: $background-color;
@@ -33,7 +43,7 @@ body {
 }
 
 .content {
-  padding: 0 1rem;
+  padding: 0 $content-horizontal-padding;
 }
 
 .button.selected {
@@ -46,7 +56,19 @@ body {
 
 .character-select {
   .list {
-    @include block-grid(4);
+    margin: 0 -0.5vw; // negate margins of <li>s at edges
+
+    @include flexbox((
+      display: flex,
+      flex-wrap: wrap,
+      justify-content: center
+    ));
+  }
+
+  li {
+    list-style: none;
+    width: 20vw;
+    margin: 0.5vh 0.5vw;
   }
 
   .button {
@@ -55,13 +77,49 @@ body {
   }
 }
 
-// name, health bar, combo damage readout styles
-.players {
-  @include block-grid(2);
+// block which includes life bars and combo readout
+.counters {
+  @include flexbox((
+    display: flex,
+    align-items: center
+  ));
 }
 
+.team-health {
+  width: $team-health-width;
+
+  // TODO: figure out a better way of specifying this? This shit is crazy.
+  &.right {
+    .health {
+      width: 100%;
+      @include flexbox((
+        display: flex,
+        flex-direction: column,
+        align-items: flex-end,
+        justify-content: flex-start
+      ));
+
+      .health__health-bar {
+        @include flexbox((
+          display: flex,
+          flex-direction: column,
+          align-items: flex-start
+        ))
+      }
+    }
+  }
+}
+
+// block which includes life bars, name, and health for a single player
 .health {
   cursor: pointer;
+  width: 100%;
+
+  @include flexbox((
+    display: flex,
+    flex-direction: column,
+    justify-content: flex-start
+  ))
 }
 
 .health.current {
@@ -76,14 +134,15 @@ body {
   }
 }
 
-.health:first-child {
-  .health__name, .health__number {
-    text-align: left;
-  }
-}
+// container for health/damage bars
+.health__health-bar {
+  width: 100%;
 
-.health__name, .health__number {
-  text-align: right;
+  @include flexbox((
+    display: flex,
+    flex-direction: column,
+    align-items: flex-end
+  ))
 }
 
 .health__health {
@@ -91,31 +150,31 @@ body {
   background-color: $health-bar-color;
   height: $health-bar-height;
   margin-top: -($health-bar-height);
-  width: 100%; // Om will override with an element style later
-  // if it should be right-aligned, Om will apply left-margin
 }
 
 /* This background color is revealed as the health bar shrinks. */
 .health__damage {
   @include border-radius($health-bar-border-radius);
   background-color: $health-bar-damage-color;
+  width: 100%;
   height: $health-bar-height;
 }
 
+// div which contains running damage total, during a combo; "VS" otherwise
 .combo {
   @include border-radius(8px);
+  @include flexbox((
+    display: flex,
+    align-items: center,
+    justify-content: center
+  ));
 
   border: 2px black solid;
-
-  display: table; // to center the text
-  width: 4rem;
-  height: 4rem;
-
-  position: absolute;
-  left: 50%;
-  margin-left: -2rem;
-
+  width: $combo-width;
+  height: $combo-height;
+  margin: 0 -($combo-underlap);
   background-color: $combo-color-idle;
+  z-index: $z-index-front;
 
   &.damage {
     background-color: $combo-color-damage;
@@ -127,11 +186,6 @@ body {
 }
 
 .combo__text {
-  // if parent is not display: table, none of this works
-  display: table-cell;
-  text-align: center;
-  vertical-align: middle;
-
   color: white;
   font-size: 26px;
   font-weight: bold;
