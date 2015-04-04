@@ -47,12 +47,24 @@
 ;; will be applied to the player.
 (def combo-timeout 3000)
 
-(declare app-state channels)
+;; Initial application data state; used to populate app-state, and again
+;; whenever the game returns to character select.
+(def initial-data
+  {:characters-selected false
+   :teams [{:id :team-one
+            :current-player-id :player-one
+            :players [{:id :player-one}]}
+           {:id :team-two
+            :current-player-id :player-two
+            :players [{:id :player-two}]}]
+   :current-team-id :team-one
+   :running-total 0
+   :history []})
 
 ;; App state consists of the following keys:
 ;;
 ;; * characters-selected: true if character select is complete.
-;; * teams: a vector of team objects; see below.
+;; * teams: a vector of exactly two team objects; see below.
 ;; * current-team-id: the keyword id of the currently active team.
 ;; * running-total: the running total of the current combo.
 ;; * history: a vector of `[player-id n]` pairs representing every hit which
@@ -65,19 +77,9 @@
 ;;  :players [{:id :player-one, :health 90, :ex false
 ;;             :character {:name "Grave", :health 90}}]}
 ;; ```
-(defonce app-state
-  (atom
-    {:characters-selected false
-     ; TODO: remove assumption that teams start with players
-     :teams [{:id :team-one
-              :current-player-id :player-one
-              :players [{:id :player-one}]}
-             {:id :team-two
-              :current-player-id :player-two
-              :players [{:id :player-two}]}]
-     :current-team-id :team-one
-     :running-total 0
-     :history []}))
+;;
+;; A team may contain up to two players.
+(defonce app-state (atom initial-data))
 
 ;; Contains a map {:player-id {:hits ch, :running-total ch, :damage ch}, ...},
 ;; for each player. The :hits channel is an input channel which should be given
@@ -236,12 +238,11 @@
      :damage damage}))
 
 ;; Resets character selection and returns to the character screen.
-; TODO: get this to work with team system; for now, can only select once
-(defn return-to-character-select! []
+(defn reset-app! []
   (om/transact! (app-cursor)
-    #(assoc % :characters-selected false
-              :teams []
-              :running-total 0)))
+    (fn [app]
+      (let [assoc-list (apply interleave ((juxt keys vals) initial-data))]
+        (apply assoc (conj assoc-list app))))))
 
 ;; Returns a channel hash appropriate for the channels atom. Starts go loops
 ;; over each channel. See player->channels.
@@ -252,7 +253,8 @@
 (defn- clear-history! []
   (om/update! (history-cursor) []))
 
-;; Returns the player, at full health. Returns the player TO full health.
+;; Returns the player, at full health. Use when returning the player TO full
+;; health in a transaction.
 (defn- reset-health [player]
   (assoc player :health (max-health player)))
 

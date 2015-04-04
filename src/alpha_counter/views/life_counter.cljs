@@ -42,7 +42,7 @@
     (render [_]
       (html
         [:div {:class "toolbar"}
-         (om/build two-stage-button {:text "Character Select" :on-click data/return-to-character-select!})
+         (om/build two-stage-button {:text "Character Select" :on-click data/reset-app!})
          (om/build two-stage-button {:text "Rematch" :on-click data/rematch!})
          [:button {:class "button small" :on-click data/undo!} "Undo"]
          (html-container
