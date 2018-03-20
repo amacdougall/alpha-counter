@@ -1,18 +1,17 @@
-(defproject alpha-counter "0.9.1"
+(defproject alpha-counter "0.9.2"
   :description "An Om life counter webapp for Yomi."
   :url "http://www.yomicounter.com"
   :license {:name "MIT License"
             :url "http://opensource.org/licenses/MIT"}
 
-  :dependencies [[org.clojure/clojure "1.7.0-alpha5"]
-                 [org.clojure/clojurescript "0.0-3058" :scope "provided"]
-                 [figwheel "0.2.5"]
+  :dependencies [[org.clojure/clojure "1.9.0"]
+                 [org.clojure/clojurescript "1.9.946"]
                  [sablono "0.3.4"]
                  [org.omcljs/om "0.8.8"]
-                 [org.clojure/core.async "0.1.346.0-17112a-alpha"]]
+                 [org.clojure/core.async "0.4.474"]]
 
-  :plugins [[lein-cljsbuild "1.0.4"]
-            [lein-figwheel "0.2.5"]]
+  :plugins [[lein-cljsbuild "1.1.7"]
+            [lein-figwheel "0.5.15"]]
 
   :source-paths ["src"]
 
