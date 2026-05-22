@@ -8,7 +8,11 @@
                  [org.clojure/clojurescript "1.9.946"]
                  [sablono "0.3.4"]
                  [org.omcljs/om "0.8.8"]
-                 [org.clojure/core.async "0.4.474"]]
+                 [org.clojure/core.async "0.4.474"]
+                 ;; ClojureScript 1.9.x references javax.xml.bind.DatatypeConverter,
+                 ;; which was removed from the JDK after Java 8 (JEP 320). Pulling
+                 ;; in the standalone JAXB API restores it under JDK 11+.
+                 [javax.xml.bind/jaxb-api "2.3.1"]]
 
   :plugins [[lein-cljsbuild "1.1.7"]
             [lein-figwheel "0.5.15"]]
@@ -42,4 +46,8 @@
 
   :figwheel {:http-server-root "public" ;; default and assumes "resources"
              :server-port 3449 ;; default
-             :css-dirs ["resources/public/css"]}) ;; watch and update CSS
+             :css-dirs ["resources/public/css"] ;; watch and update CSS
+             ;; The default Mac watcher (com.barbarysoftware) ships a Carbon
+             ;; native lib that doesn't exist on Apple Silicon. Fall back to
+             ;; polling so figwheel-sidecar 0.5.x runs on arm64 macOS.
+             :hawk-options {:watcher :polling}})
