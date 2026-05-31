@@ -117,8 +117,8 @@
             [:span {:class "health__number-max"} (str "/" max-hp)]]])))
 
 ;; When a combo is in progress, display the running total with an explicit
-;; sign; otherwise display "VS".
-(defn- combo [running-total owner]
+;; sign; otherwise display "VS" (or "KO" once a fighter has been knocked out).
+(defn- combo [{:keys [running-total ko?]} owner]
   (reify
     om/IDisplayName
     (display-name [_] "ComboView")
@@ -128,6 +128,7 @@
             healing (and (not idle) (neg? running-total))
             magnitude (Math/abs running-total)
             text (cond
+                   (and idle ko?) "KO"
                    idle "VS"
                    healing (str "+" magnitude)
                    :else (str "−" magnitude))
@@ -165,7 +166,11 @@
            ;; bar area, so a wrapped (multi-row) toolbar doesn't leave the
            ;; disc stranded in the toolbar zone.
            [:div {:class "arena"}
-            (om/build combo (:running-total app))
+            (om/build combo {:running-total (:running-total app)
+                             :ko? (boolean
+                                    (some (fn [{:keys [health]}]
+                                            (and health (not (pos? health))))
+                                          (:players app)))})
             (html-container
               [:ul {:class "players"}]
               (mapv (fn [player side]
