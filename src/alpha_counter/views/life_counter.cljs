@@ -118,7 +118,8 @@
 
 ;; When a combo is in progress, display the running total with an explicit
 ;; sign; otherwise display "VS" (or "KO" once a fighter has been knocked out).
-(defn- combo [{:keys [running-total ko?]} owner]
+;; A "N HITS" subtitle hangs below the disc while a combo is in progress.
+(defn- combo [{:keys [running-total ko? hits]} owner]
   (reify
     om/IDisplayName
     (display-name [_] "ComboView")
@@ -133,9 +134,13 @@
                    healing (str "+" magnitude)
                    :else (str "−" magnitude))
             active-state (cond healing "healing"
-                               (not idle) "damage")]
+                               (not idle) "damage")
+            show-hits? (and (not idle) (pos? (or hits 0)))]
         (html [:div {:class (classes "combo" active-state)}
-               [:div {:class "combo__text"} text]])))))
+               [:div {:class "combo__text"} text]
+               (when show-hits?
+                 [:div {:class "combo__hits"}
+                  (str hits " HIT" (when (not= hits 1) "S"))])])))))
 
 ;; A damage/heal button: negative amounts get the .heal modifier and a
 ;; "HEAL" tag.
@@ -167,6 +172,7 @@
            ;; disc stranded in the toolbar zone.
            [:div {:class "arena"}
             (om/build combo {:running-total (:running-total app)
+                             :hits (:hits app)
                              :ko? (boolean
                                     (some (fn [{:keys [health]}]
                                             (and health (not (pos? health))))

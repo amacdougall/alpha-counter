@@ -52,6 +52,7 @@
      :players [{:id :player-one} {:id :player-two}]
      :current-player-id :player-one
      :running-total 0
+     :hits 0
      :history []}))
 
 ;; Contains a map {:player-id {:hits ch, :running-total ch, :damage ch}, ...},
@@ -118,11 +119,13 @@
         (assoc player :health (min (- health n) (max-health player)))))))
 
 (defn- player->channels [player]
-  (let [hits (chan)
-        mult (mult hits)
+  (let [hits-in (chan)
+        mult (mult hits-in)
         running-total (-> (tap mult (chan))
                         (channels/trickle damage-change-speed)
                         (channels/running-total combo-timeout))
+        hit-count (-> (tap mult (chan))
+                    (channels/hit-count combo-timeout))
         damage (-> (tap mult (chan))
                  (channels/delayed-total combo-timeout)
                  (channels/trickle health-change-speed))]
@@ -133,14 +136,21 @@
         (om/update! (app-cursor) [:running-total] n)
         (recur)))
 
+    ; update hit count (:reset → 0) as it changes
+    (go-loop []
+      (when-let [v (<! hit-count)]
+        (om/update! (app-cursor) [:hits] (if (= v :reset) 0 v))
+        (recur)))
+
     ; apply damage to player as it comes off the delay->trickle chain
     (go-loop []
       (when-let [v (<! damage)]
         (apply-damage player v)
         (recur)))
 
-    {:hits hits
+    {:hits hits-in
      :running-total running-total
+     :hit-count hit-count
      :damage damage}))
 
 ;; Returns to the character-select screen in the Initial state (no picks).
@@ -150,6 +160,7 @@
       (assoc app
              :characters-selected false
              :running-total 0
+             :hits 0
              :players (mapv (fn [p] (dissoc p :character :ex))
                             (:players app))))))
 
@@ -171,6 +182,8 @@
   (clear-history!)
   (om/transact! app #(assoc %
                             :characters-selected true
+                            :running-total 0
+                            :hits 0
                             :players (mapv reset-health (:players %)))))
 
 ;; Returns all players to full health.

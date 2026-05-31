@@ -24,6 +24,28 @@
               (recur (- total n)))))))
     out))
 
+;; Returns a channel which counts hits received from the input channel.
+;; Emits 1, 2, 3, … as inputs arrive. After ms of inactivity, emits :reset
+;; and resets the counter. The numeric value of each input is ignored —
+;; only its arrival counts as a hit, so both damage and healing combos
+;; advance the counter.
+(defn hit-count [in ms]
+  (let [out (chan)]
+    (go-loop [n 0]
+      (if (zero? n)
+        (let [_ (<! in)]
+          (>! out 1)
+          (recur 1))
+        (let [[_ ch] (alts! [in (timeout ms)])]
+          (if (= ch in)
+            (let [n+1 (inc n)]
+              (>! out n+1)
+              (recur n+1))
+            (do
+              (>! out :reset)
+              (recur 0))))))
+    out))
+
 ;; Returns a channel which takes values from the input channel, and receives
 ;; the running total after each input. For instance, given the values 10, 20,
 ;; 30, receives the values 10, 30, 50. After the timeout, receives :reset, and
