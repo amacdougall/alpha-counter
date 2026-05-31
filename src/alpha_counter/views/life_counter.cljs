@@ -6,14 +6,14 @@
             [sablono.core :as html :refer-macros [html]]))
 
 ;; Takes a properties hash {:text string, :on-click fn}. When first clicked,
-;; adds the "activated" class to the button for 2 seconds. If clicked again
+;; adds the "activated" class to the button for ~1s. If clicked again
 ;; within this time, executes :on-click.
 (defn- two-stage-button [{:keys [text on-click]} owner]
   (reify
     om/IDisplayName
     (display-name [_] "TwoStageButton")
     om/IInitState
-    (init-state [_] {:activated false}) ; when true, next click will return to char select
+    (init-state [_] {:activated false})
     om/IRenderState
     (render-state [_ {:keys [activated]}]
       (let [activate! (fn []
@@ -26,13 +26,8 @@
                         :on-click handle-click}
                text])))))
 
-(defn- ability-button [[text f] owner]
-  (reify
-    om/IDisplayName
-    (display-name [_] "AbilityButton")
-    om/IRender
-    (render [_]
-      (html [:button {:class "button small" :on-click f} text]))))
+(defn- ability-button [[text f]]
+  (html [:button {:class "button small ability" :key text :on-click f} text]))
 
 (defn- toolbar [app owner]
   (reify
@@ -44,112 +39,142 @@
         [:div {:class "toolbar"}
          (om/build two-stage-button {:text "Character Select" :on-click data/return-to-character-select!})
          (om/build two-stage-button {:text "Rematch" :on-click data/rematch!})
-         [:button {:class "button small" :on-click data/undo!} "Undo"]
+         [:button {:class "button small ghost" :on-click data/undo!} "Undo"]
          (html-container
            [:div {:class "abilities"}]
-           (om/build-all ability-button (abilities/active)))]))))
+           (mapv ability-button (abilities/active)))]))))
 
 ;; Returns the player's health as a float ratio, between 1.0 and 0.0.
 (defn- health-ratio [player]
   (let [max-health (data/max-health player)
         health (:health player)]
-    (/ health max-health)))
+    (if (zero? max-health) 0 (/ health max-health))))
 
 ;; Returns the player's health as a percentage string ending in "%", rounded
-;; up; e.g. a player at 50/80 health would return "63%". Useful when applying
-;; damage bar width in CSS.
+;; up; e.g. a player at 50/80 health would return "63%". Used for the
+;; .health__health inline width.
 (defn- health-percent [player]
   (-> (health-ratio player) (* 100) Math/ceil (str "%")))
 
-;; Returns the damage the player has taken as a percentage string ending in
-;; "%", rounded down; e.g. a player at 50/80 health would return "37%". Useful
-;; when applying damage bar margin for right alignment in CSS.
-(defn- damage-percent [player]
-  (-> (- 1 (health-ratio player)) (* 100) Math/floor (str "%")))
+;; Health bar row. Expects props {:player p, :current-player-id k,
+;; :select-player fn, :side "left"|"right"}. The CSS handles left/right
+;; anchoring of the fill (via .health--left / .health--right), so we no
+;; longer set marginLeft.
+(defn- health [{:keys [player current-player-id select-player side]}]
+  (let [current (= (:id player) current-player-id)
+        ratio (max 0 (health-ratio player))
+        raw-hp (:health player)
+        ko? (and (some? raw-hp) (not (pos? raw-hp)))
+        hp (if ko? 0 raw-hp)
+        max-hp (data/max-health player)
+        danger? (and (pos? hp) (<= ratio 0.25))
+        character-name (:name (:character player))
+        cls (classes "health"
+                     (str "health--" side)
+                     (when current "current")
+                     (when danger? "danger")
+                     (when ko? "ko"))]
+    (html
+      [:li {:class cls
+            :key (name (:id player))
+            :on-click select-player}
+           ;; Name — locked SVG fit-to-width in portrait, plain text in
+           ;; landscape. Both render; a container query on .life-counter
+           ;; toggles which is visible (see .health__name--svg in the CSS).
+           [:div {:class "health__name health__name--svg"}
+            [:svg {:class "health__name-svg name-portrait"
+                   :view-box "0 0 220 34"
+                   :preserve-aspect-ratio "none"
+                   :aria-label character-name}
+             [:text {:x 0 :y 27
+                     :text-length 220
+                     :length-adjust "spacingAndGlyphs"}
+              character-name]]
+            [:span {:class "health__name-text name-landscape"
+                    :aria-hidden "true"}
+             character-name]]
+           ;; Bar rail wrapped in .health__bar-row so the current-player
+           ;; triangle indicator (CSS ::before) can anchor to the bar's
+           ;; vertical center and sit just outside it in the padding gutter.
+           [:div {:class "health__bar-row"}
+            [:div {:class "health__health-bar"}
+             [:div {:class "health__damage"}]
+             [:div {:class "health__health"
+                    :style (js-obj "width" (health-percent player))}]
+             ;; React 0.12 doesn't pass through CSS custom properties in the
+             ;; style prop, so compute the edge's `left` percent inline (the
+             ;; CSS otherwise uses calc(var(--ratio) * 100%)).
+             [:div {:class "health__edge"
+                    :style (js-obj "left" (str (* (if (= side "left")
+                                                    (- 1 ratio)
+                                                    ratio)
+                                                  100) "%"))}]
+             (when ko?
+               [:div {:class "health__ko"} "K.O."])]]
+           ;; HP readout — split into current + /max
+           [:div {:class "health__number"}
+            [:span {:class "health__number-cur"} hp]
+            [:span {:class "health__number-max"} (str "/" max-hp)]]])))
 
-;; Health bar view. Expects props {:player p, :current-player-id k,
-;; :select-player fn}. Includes character name, current life as a number, and
-;; health and damage bars. The health bar shrinks as the player takes damage,
-;; progressively revealing the damage bar.
-(defn- health [props owner]
-  (reify
-    om/IDisplayName
-    (display-name [_] "HealthView")
-    om/IRender
-    (render [_]
-      (let [{:keys [player current-player-id select-player]} props
-            ; if this is the left-hand player, the health bar should be aligned
-            ; right as it shrinks; I'd prefer to do this in CSS, I just don't
-            ; know how. TODO: learn how. Maybe dwab or Rachel can help.
-            left (= (:id player) :player-one)
-            current (= (:id player) current-player-id)
-            health-width ["width" (health-percent player)]
-            health-offset (when left ["marginLeft" (damage-percent player)])
-            health-style (apply js-obj (concat health-width health-offset))]
-        (html
-          [:li {:class (classes "health" (when current "current"))
-                :onClick select-player}
-           [:div {:class "health__name"}
-            (str (when (:ex player) "EX ") (:name (:character player)))]
-           [:div {:class "health__health-bar"}
-            [:div {:class "health__damage"} ""]
-            [:div {:class "health__health" :style health-style} ""]
-            [:div {:class "health__number"} (:health player)]]])))))
-
-;; A button which registers a hit for the supplied damage amount when clicked.
-(defn- damage-button [n owner]
-  (reify
-    om/IDisplayName
-    (display-name [_] "DamageButtonView")
-    om/IRender
-    (render [_]
-      (let [text (if (pos? n) n (str "+" (Math/abs n)))]
-      (html
-        [:li
-         [:button {:class "small button"
-                   :on-click #(data/register-hit n)}
-          text]])))))
-
-;; When a combo is in progress, display the running total; otherwise, displays
-;; the "VS" symbol between the two health panes.
+;; When a combo is in progress, display the running total with an explicit
+;; sign; otherwise display "VS".
 (defn- combo [running-total owner]
   (reify
     om/IDisplayName
     (display-name [_] "ComboView")
     om/IRender
     (render [_]
-      (let [idle (#{0 :reset} running-total) ; false if combo is in progress
-            is-healing (neg? running-total) ; yes, negative damage restores health
-            damage-text (str (when is-healing "+") (Math/abs running-total))
-            text (if idle "VS" damage-text)
-            active-state-name (cond is-healing "healing", (not idle) "damage")]
-        ; active-state-name is nil if idle
-        (html [:div {:class (classes "combo" active-state-name)}
+      (let [idle (#{0 :reset} running-total)
+            healing (and (not idle) (neg? running-total))
+            magnitude (Math/abs running-total)
+            text (cond
+                   idle "VS"
+                   healing (str "+" magnitude)
+                   :else (str "−" magnitude))
+            active-state (cond healing "healing"
+                               (not idle) "damage")]
+        (html [:div {:class (classes "combo" active-state)}
                [:div {:class "combo__text"} text]])))))
 
-;; Life counter view. Includes the combo damage readout, a health component for
-;; each player, damage buttons, and a toolbar.
+;; A damage/heal button: negative amounts get the .heal modifier and a
+;; "HEAL" tag.
+(defn- damage-button [n]
+  (let [heal? (neg? n)
+        label (if heal? (str "+" (Math/abs n)) (str n))
+        cls (classes "button small" (when heal? "heal"))]
+    (html
+      [:li {:key (str n)}
+       [:button {:class cls
+                 :on-click #(data/register-hit n)}
+        label
+        (when heal?
+          [:span {:class "heal-tag"} "HEAL"])]])))
+
+;; Life counter view.
 (defn main [app owner]
   (reify
     om/IDisplayName
     (display-name [_] "LifeCounterView")
     om/IRender
     (render [_]
-      (html
-        [:div {:class "life-counter"}
-         ; toolbar
-         (om/build toolbar app)
-         ; health bars and combo running total ("VS" button when idle)
-         (om/build combo (:running-total app))
-         (html-container
-           [:ul {:class "players"}]
-           (om/build-all health
-             (mapv (fn [player] ; build health arguments per player
-                     {:player player
-                      :current-player-id (:current-player-id app)
-                      :select-player (partial data/select-player app player)})
-                   (:players app))))
-         ; damage buttons
-         (html-container
-           [:ul {:class "damage-buttons"}]
-           (om/build-all damage-button data/damage-amounts))]))))
+      (let [players (:players app)]
+        (html
+          [:div {:class "life-counter name-mode--svg"}
+           (om/build toolbar app)
+           ;; .arena scopes the combo disc's absolute positioning to the
+           ;; bar area, so a wrapped (multi-row) toolbar doesn't leave the
+           ;; disc stranded in the toolbar zone.
+           [:div {:class "arena"}
+            (om/build combo (:running-total app))
+            (html-container
+              [:ul {:class "players"}]
+              (mapv (fn [player side]
+                      (health {:player player
+                               :current-player-id (:current-player-id app)
+                               :select-player (partial data/select-player app player)
+                               :side side}))
+                    players
+                    ["left" "right"]))]
+           (html-container
+             [:ul {:class "damage-buttons"}]
+             (mapv damage-button data/damage-amounts))])))))

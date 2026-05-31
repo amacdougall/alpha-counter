@@ -1,0 +1,1384 @@
+/*
+       Drop these in `resources/public/css/app.css`, replacing the old
+       Foundation-derived sheet. Foundation grid helpers (.row/.columns)
+       are NOT used — flex/grid + container queries handle everything.
+       ===================================================================== */
+
+    /* ---------- Design tokens ---------------------------------------- */
+    :root{
+      /* hue per accent option — chroma kept roughly constant across hues */
+      --p1-hue: 35;   /* fire (orange)   — default P1 */
+      --p2-hue: 210;  /* ice  (cyan)     — default P2 */
+
+      --hit-red:        oklch(0.58 0.22 25);
+      --hit-red-dim:    oklch(0.32 0.14 22);
+      --hit-red-bri:    oklch(0.75 0.22 25);
+      --heal-grn:       oklch(0.72 0.18 155);
+      --warn-yel:       oklch(0.85 0.18 90);
+
+      --bg:        oklch(0.16 0.012 250);
+      --bg-2:      oklch(0.21 0.014 250);
+      --surface:   oklch(0.25 0.016 250);
+      --surface-2: oklch(0.31 0.018 250);
+      --line:      oklch(0.33 0.020 250);
+      --line-2:    oklch(0.44 0.024 250);
+      --fg:        oklch(0.97 0.008 85);
+      --fg-mute:   oklch(0.74 0.012 245);
+      --fg-faint:  oklch(0.55 0.014 245);
+    }
+    html[data-theme="light"]{
+      --bg:        oklch(0.97 0.005 90);
+      --bg-2:      oklch(0.93 0.008 85);
+      --surface:   oklch(1.00 0.000 85);
+      --surface-2: oklch(0.92 0.008 85);
+      --line:      oklch(0.85 0.014 85);
+      --line-2:    oklch(0.70 0.020 80);
+      --fg:        oklch(0.18 0.014 250);
+      --fg-mute:   oklch(0.36 0.014 250);
+      --fg-faint:  oklch(0.55 0.012 245);
+    }
+    html[data-accent-p1="fire"]    { --p1-hue: 35;  }
+    html[data-accent-p1="crimson"] { --p1-hue: 22;  }
+    html[data-accent-p1="magenta"] { --p1-hue: 340; }
+    html[data-accent-p1="amber"]   { --p1-hue: 75;  }
+    html[data-accent-p2="ice"]     { --p2-hue: 210; }
+    html[data-accent-p2="violet"]  { --p2-hue: 280; }
+    html[data-accent-p2="emerald"] { --p2-hue: 155; }
+    html[data-accent-p2="azure"]   { --p2-hue: 245; }
+
+    /* Per-row accent variables — applied via .health--p1/.health--p2 + the
+       parallel .cs-column--p1/.cs-column--p2 in character select. We pick by
+       :nth-child for life-counter so the existing hiccup (no side modifier)
+       still works; the character-select rendering adds the modifiers. */
+    .players > .health:nth-child(1),
+    .cs-column--p1,
+    .acc-p1{
+      --acc:      oklch(0.72 0.18 var(--p1-hue));
+      --acc-bri:  oklch(0.84 0.18 var(--p1-hue));
+      --acc-dim:  oklch(0.50 0.15 var(--p1-hue));
+      --acc-shd:  oklch(0.28 0.12 var(--p1-hue));
+      --acc-hue:  var(--p1-hue);
+    }
+    .players > .health:nth-child(2),
+    .cs-column--p2,
+    .acc-p2{
+      --acc:      oklch(0.72 0.16 var(--p2-hue));
+      --acc-bri:  oklch(0.86 0.16 var(--p2-hue));
+      --acc-dim:  oklch(0.50 0.13 var(--p2-hue));
+      --acc-shd:  oklch(0.28 0.10 var(--p2-hue));
+      --acc-hue:  var(--p2-hue);
+    }
+
+    /* ---------- Base -------------------------------------------------- */
+    *,*::before,*::after{ box-sizing: border-box; }
+    body{
+      margin: 0;
+      min-height: 100dvh;
+      background: var(--bg);
+      color: var(--fg);
+      font-family: 'Space Grotesk', system-ui, -apple-system, Helvetica, Arial, sans-serif;
+      font-size: 15px;
+      line-height: 1.4;
+      -webkit-font-smoothing: antialiased;
+      -webkit-tap-highlight-color: transparent;
+    }
+    h1, h2, p, ul { margin: 0; padding: 0; }
+    ul { list-style: none; }
+    button { font-family: inherit; color: inherit; cursor: pointer; }
+    button:focus-visible { outline: 2px solid var(--acc, var(--fg)); outline-offset: 2px; }
+
+    /* Subtle arcade scanlines + hue wash — dark theme only */
+    html[data-theme="dark"] body::before{
+      content:"";
+      position: fixed; inset: 0; pointer-events: none; z-index: 0;
+      background:
+        repeating-linear-gradient(to bottom,
+          transparent 0 2px, rgba(255,255,255,0.012) 2px 3px),
+        radial-gradient(ellipse at 0% 0%, oklch(0.30 0.10 var(--p1-hue) / 0.18), transparent 50%),
+        radial-gradient(ellipse at 100% 100%, oklch(0.30 0.10 var(--p2-hue) / 0.18), transparent 50%);
+      mix-blend-mode: screen;
+    }
+
+    /* =====================================================================
+       BUTTON BASE
+       — applies to the existing .button (Foundation-derived) class so the
+         rest of the markup can stay unchanged. .small affects type size.
+       ===================================================================== */
+    .button{
+      appearance: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      color: var(--fg);
+      border-radius: 6px;
+      padding: 10px 14px;
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      min-height: 40px;
+      transition: background .08s, border-color .08s, color .08s, transform .06s;
+    }
+    .button:hover { background: var(--surface-2); border-color: var(--line-2); }
+    .button:active{ transform: translateY(1px); }
+    .button.small{ font-size: 13px; padding: 8px 12px; min-height: 36px; }
+    .button.ghost{ background: transparent; }
+    .button.selected{
+      background: var(--acc, oklch(0.72 0.18 35));
+      border-color: var(--acc-bri, oklch(0.84 0.18 35));
+      color: oklch(0.15 0.04 var(--acc-hue, 35));
+      box-shadow:
+        0 0 0 1px var(--acc-bri, oklch(0.84 0.18 35)),
+        0 8px 24px oklch(0.5 0.18 var(--acc-hue, 35) / 0.3);
+    }
+    /* two-stage destructive button — armed for 1.5s waiting for confirm */
+    .button.activated{
+      background: var(--hit-red);
+      border-color: var(--hit-red-bri);
+      color: oklch(0.97 0.01 80);
+      animation: pulse-arm 1s ease-in-out infinite;
+    }
+    @keyframes pulse-arm{
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
+    }
+    .button.ability{
+      background: oklch(0.28 0.06 90);
+      border-color: var(--warn-yel);
+      color: var(--warn-yel);
+      font-weight: 700;
+      letter-spacing: 0.06em;
+    }
+    .button.ability:hover{ background: oklch(0.34 0.08 90); }
+    .button.heal{
+      background: oklch(0.20 0.05 155);
+      border-color: oklch(0.38 0.10 155);
+      color: var(--heal-grn);
+    }
+    .button.heal:hover{ background: oklch(0.26 0.08 155); }
+    .button.heal:active{
+      background: var(--heal-grn);
+      color: oklch(0.15 0.04 155);
+    }
+    .button:not(.heal):not(.selected):not(.ability):active{
+      background: var(--hit-red);
+      border-color: var(--hit-red-bri);
+      color: oklch(0.97 0.01 80);
+    }
+    .button[disabled]{ opacity: 0.35; cursor: not-allowed; }
+
+    /* =====================================================================
+       CHARACTER SELECT
+       — root .character-select stacks a header, the two player columns,
+         and a Start button. On wide viewports the columns sit side-by-side.
+       ===================================================================== */
+    .character-select{
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      padding: max(14px, env(safe-area-inset-top))
+              clamp(12px, 2.4vw, 24px)
+              max(14px, env(safe-area-inset-bottom));
+      position: relative;
+      z-index: 1;
+    }
+    .cs-header{
+      display: grid;
+      grid-template-columns: auto 1fr;
+      grid-template-rows: auto auto;
+      align-items: end;
+      column-gap: 10px;
+      row-gap: 0;
+      padding: 4px 4px 14px;
+      border-bottom: 1px solid var(--line);
+    }
+    .cs-brand-mark{
+      grid-row: 1 / span 2;
+      align-self: center;
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 700;
+      font-size: 22px;
+      color: oklch(0.72 0.18 var(--p1-hue));
+      letter-spacing: -0.15em;
+      transform: skew(-12deg);
+      line-height: 1;
+    }
+    .character-select h1{
+      grid-column: 2;
+      font-family: 'Anton', sans-serif;
+      font-size: clamp(22px, 5vw, 32px);
+      font-weight: 400;
+      letter-spacing: 0.05em;
+      line-height: 1;
+      color: var(--fg);
+    }
+    .cs-tag{
+      grid-column: 2;
+      color: var(--fg-mute);
+      font-size: 12px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      margin-top: 4px;
+    }
+
+    /* The two player columns — stack by default; side-by-side at wide */
+    .character-select{ container-type: inline-size; }
+    .cs-columns{
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    @container (min-width: 760px) {
+      .cs-columns{
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 14px;
+      }
+    }
+    .cs-column{
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      position: relative;
+      overflow: hidden;
+    }
+    .cs-column::before{
+      content:"";
+      position: absolute; left: 0; top: 0; bottom: 0;
+      width: 3px;
+      background: linear-gradient(to bottom, var(--acc), var(--acc-dim));
+    }
+    @container (min-width: 760px) {
+      /* on wide layout, the column flex-grows to fill the row */
+      .cs-column{ height: 100%; }
+    }
+    /* Fallback markup: when there's no .cs-columns wrapper, the columns
+       simply stack via .character-select's column flex. */
+
+    .cs-column__head{
+      display: grid;
+      grid-template-columns: auto 1fr;
+      align-items: baseline;
+      column-gap: 10px;
+      row-gap: 2px;
+      padding-left: 4px;
+    }
+    .cs-column h2{
+      grid-column: 1 / -1;
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      font-family: 'Anton', sans-serif;
+      font-size: 16px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--fg-mute);
+      font-weight: 400;
+    }
+    .cs-slot{
+      font-family: 'Anton', sans-serif;
+      font-size: 22px;
+      color: var(--acc);
+      letter-spacing: 0.04em;
+      line-height: 1;
+    }
+    .cs-pick{
+      grid-column: 1 / -1;
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      min-height: 22px;
+    }
+    .cs-pick__name{
+      font-family: 'Anton', sans-serif;
+      font-size: 20px;
+      letter-spacing: 0.04em;
+      color: var(--acc-bri);
+      line-height: 1;
+    }
+    .cs-pick__ex{
+      font-style: normal;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 0.12em;
+      padding: 2px 5px;
+      border-radius: 3px;
+      background: var(--warn-yel);
+      color: oklch(0.18 0.04 90);
+      font-weight: 700;
+    }
+    .cs-pick__hp{
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: var(--fg-faint);
+      letter-spacing: 0.04em;
+    }
+    .cs-pick__empty{
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 11px;
+      color: var(--fg-faint);
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+    }
+
+    /* Character chip grid — 2 columns; chips lay out horizontally so even
+       "Bal-Bas-Beta 80/100" fits on one line.                            */
+    .list{
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 6px;
+    }
+    .list > li{ display: contents; }
+    .list .button{
+      position: relative;
+      flex-direction: row;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 10px 14px;
+      min-height: 44px;
+      text-align: left;
+      font-family: 'Anton', sans-serif;
+      font-size: clamp(14px, 3.4vw, 18px);
+      letter-spacing: 0.03em;
+      line-height: 1;
+      font-weight: 400;
+    }
+    .list .char-name{
+      flex: 1;
+      min-width: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .list .char-hp{
+      flex-shrink: 0;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 0.04em;
+      color: var(--fg-faint);
+      font-weight: 500;
+    }
+    .list .button.selected .char-hp{
+      color: oklch(0.25 0.04 var(--acc-hue));
+    }
+    .list .button.selected.ex{
+      box-shadow:
+        0 0 0 1px var(--acc-bri),
+        0 0 0 3px oklch(0.85 0.18 90 / 0.55),
+        0 8px 24px oklch(0.5 0.18 var(--acc-hue, 35) / 0.3);
+    }
+    .list .button.taken{
+      opacity: 0.32;
+      cursor: not-allowed;
+    }
+    /* In the horizontal chip layout the EX state is conveyed by the yellow
+       ring (box-shadow on .selected.ex). The corner badge is hidden to
+       avoid overlapping the HP value on the right. */
+    .char-ex-badge{ display: none; }
+
+    /* Start button (renamed visually to FIGHT when both fighters chosen) */
+    .cs-start{
+      margin-top: auto;
+      width: 100%;
+      padding: 18px 20px;
+      font-family: 'Anton', sans-serif;
+      font-size: clamp(22px, 5vw, 30px);
+      letter-spacing: 0.2em;
+      border-radius: 10px;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      color: var(--fg-mute);
+      min-height: 64px;
+    }
+    .cs-start.ready{
+      background: linear-gradient(135deg,
+        oklch(0.65 0.20 var(--p1-hue)),
+        oklch(0.65 0.18 var(--p2-hue)));
+      border-color: transparent;
+      color: oklch(0.15 0.04 var(--p1-hue));
+      box-shadow:
+        0 0 0 1px oklch(0.85 0.15 var(--p1-hue) / 0.4),
+        0 12px 40px oklch(0.45 0.18 var(--p1-hue) / 0.35);
+    }
+    .cs-start.ready:hover{ transform: translateY(-1px); }
+
+    /* =====================================================================
+       LIFE COUNTER
+       — root .life-counter is a flex column. Bar metaphor: a single
+         horizontal arena split by a square VS marker. Each side depletes
+         from the OUTSIDE inward toward the center — same as the current
+         app behavior (P1 marginLeft = damage%) but rebuilt with right/left
+         anchoring + an inline width on the .health__health element so the
+         hiccup's existing inline style stays simple.
+       ===================================================================== */
+    .life-counter{
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      gap: clamp(10px, 1.6vw, 18px);
+      padding: max(12px, env(safe-area-inset-top))
+              clamp(10px, 2.2vw, 22px)
+              max(12px, env(safe-area-inset-bottom));
+      position: relative;
+      z-index: 1;
+      container-type: inline-size;
+    }
+
+    /* ---- Toolbar ---- */
+    .toolbar{
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      align-items: center;
+    }
+    .toolbar > .button{ min-height: 36px; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; padding: 6px 10px; }
+    .abilities{
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      margin-left: auto;
+    }
+
+    /* ---- Health bar arena ----
+       Two halves side-by-side with a gap in the middle. The .combo badge
+       sits absolutely positioned, hovering over the gap.                  */
+    .players{
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      column-gap: clamp(72px, 11vw, 100px);
+      align-items: stretch;
+      position: relative;
+      padding: 4px 0;          /* HITS counter slot dropped — re-add bottom padding when wiring combo__hits */
+    }
+    .health{
+      position: relative;
+      padding: 4px 12px 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      min-width: 0;
+      cursor: pointer;
+      transition: opacity .15s;
+    }
+    .health:not(.current){ opacity: 0.72; }
+    /* P2 is the SECOND .health child (no row 3) */
+    .health:nth-child(2), .health--right{ text-align: right; }
+    .health:first-child, .health--left{ text-align: left; }
+
+    .health__name{
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      font-family: 'Anton', sans-serif;
+      font-size: clamp(18px, 3.6vw, 26px);
+      letter-spacing: 0.04em;
+      line-height: 1;
+      color: var(--acc-bri);
+      text-shadow: 0 0 16px oklch(0.5 0.18 var(--acc-hue) / 0.35);
+      min-height: 24px;
+    }
+    /* The name text lives in its own span so each fit-strategy can target it
+       without disturbing the EX badge beside it. */
+    .health__name-text{
+      flex: 1;
+      min-width: 0;
+    }
+    /* ── Mode: truncate (default/baseline) — one line, ellipsis clip ── */
+    .health__name--truncate .health__name-text{
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    /* ── Mode: wrap — flow onto up to 2 lines, balanced ── */
+    .health__name--wrap{ align-items: flex-start; }
+    .health__name--wrap .health__name-text{
+      white-space: normal;
+      line-height: 0.95;
+      text-wrap: balance;
+      overflow-wrap: anywhere;
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+      overflow: hidden;
+    }
+    /* ── Mode: shrink — smaller fixed type that fits the LONGEST roster name
+       ("Bal-Bas-Beta") on one line without an ellipsis. Uses cqi (1% of the
+       .life-counter inline size) so the size tracks the real column width on
+       any device — NOT vw, which measures the whole viewport and mis-scales
+       inside the design canvas. Tuned so scrollWidth ≤ clientWidth at the
+       worst case. */
+    .health__name--shrink{
+      font-size: clamp(10px, 3.3cqi, 13px);
+      letter-spacing: 0.01em;
+    }
+    .health__name--shrink .health__name-text{
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    /* ── Mode: svg — textLength squeezes glyphs to fill the column ──
+       Responsive: the SVG (condensed) shows in narrow/portrait columns; a
+       plain-text span shows in wide/landscape columns. Both are in the DOM;
+       the container query on .life-counter (container-type: inline-size)
+       toggles which is visible — no JS. */
+    .health__name--svg{ align-items: center; }
+    .health__name-svg{
+      flex: 1;
+      min-width: 0;
+      height: clamp(20px, 3.6vw, 28px);
+      display: block;
+    }
+    .health__name-svg text{
+      fill: currentColor;
+      font-family: inherit;
+      font-weight: inherit;
+      font-size: 27px;          /* viewBox units; textLength does the fitting */
+      letter-spacing: 0;
+    }
+    .health--right .health__name-svg text{ text-anchor: start; }
+    /* portrait/landscape variants of the name inside svg mode */
+    .health__name--svg .name-landscape{
+      display: none;            /* hidden by default (portrait) */
+      flex: 1;
+      min-width: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    /* Wide column (landscape iPad / desktop): show plain text, hide the SVG */
+    @container (min-width: 620px){
+      .health__name--svg .name-portrait{ display: none; }
+      .health__name--svg .name-landscape{ display: block; }
+    }
+    /* ── Mode: fit — JS scales font-size down only when it overflows ── */
+    .health__name--fit .health__name-text{
+      white-space: nowrap;
+      overflow: hidden;
+      display: block;
+    }
+
+    .health:nth-child(2) .health__name,
+    .health--right .health__name{
+      flex-direction: row-reverse;
+      justify-content: flex-end;
+    }
+    .health--right .health__name-text{ text-align: right; }
+    .health__ex{
+      font-style: normal;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 0.12em;
+      padding: 2px 5px;
+      border-radius: 3px;
+      background: var(--acc);
+      color: oklch(0.15 0.04 var(--acc-hue));
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    /* Bar rail */
+    .health__health-bar{
+      position: relative;
+      height: clamp(22px, 3vw, 30px);
+      border-radius: 3px;
+      overflow: hidden;
+      background: oklch(0.10 0.02 250);
+      border: 1px solid oklch(0.36 0.05 var(--acc-hue) / 0.6);
+      box-shadow:
+        inset 0 1px 0 oklch(0.50 0.06 var(--acc-hue) / 0.35),
+        inset 0 -2px 8px oklch(0.10 0.04 var(--acc-hue) / 0.85),
+        0 0 18px oklch(0.50 0.18 var(--acc-hue) / 0.18);
+    }
+    /* Damage zone — the dark-red layer revealed as health shrinks */
+    .health__damage{
+      position: absolute; inset: 0;
+      background:
+        linear-gradient(to bottom,
+          oklch(0.45 0.20 25) 0%,
+          oklch(0.30 0.18 22) 60%,
+          oklch(0.22 0.14 22) 100%);
+      box-shadow: inset 0 0 14px oklch(0.55 0.22 25 / 0.55);
+    }
+    /* Optional segmented tick overlay (every 10 HP). Drawn on top of damage,
+       below the fill, so it shows through the lit portion as faint divisions. */
+    .health__health-bar::after{
+      content:"";
+      position: absolute; inset: 2px 0;
+      pointer-events: none;
+      background:
+        repeating-linear-gradient(to right,
+          transparent 0,
+          transparent calc(10% - 1px),
+          oklch(0.06 0.02 250 / 0.5) calc(10% - 1px),
+          oklch(0.06 0.02 250 / 0.5) 10%);
+      mix-blend-mode: overlay;
+    }
+    /* The fill — width set inline (existing .health__health style).
+       P1 (left side) anchors on the RIGHT edge → shrinks leftward.
+       P2 (right side) anchors on the LEFT edge  → shrinks rightward.
+       Damage zone shows on the outer edge of each half, framing the VS
+       marker with light and the screen edges with red as the fight wears
+       on. NOTE: existing CLJS sets marginLeft for P1 — drop that; this CSS
+       handles anchoring via right/left.                                       */
+    .health__health{
+      position: absolute;
+      top: 0; bottom: 0;
+      width: 100%;                /* overridden inline */
+      background:
+        linear-gradient(to bottom,
+          var(--acc-bri) 0%,
+          var(--acc) 45%,
+          var(--acc-dim) 100%);
+      box-shadow:
+        inset 0 1px 0 oklch(0.96 0.10 var(--acc-hue) / 0.55),
+        inset 0 -1px 0 oklch(0.30 0.10 var(--acc-hue) / 0.6),
+        0 0 14px var(--acc);
+      transition: width 0.04s linear;
+    }
+    .health:nth-child(1) .health__health,
+    .health--left .health__health{ right: 0; }
+    .health:nth-child(2) .health__health,
+    .health--right .health__health{ left: 0; }
+
+    /* Glow at the moving edge */
+    .health__edge{
+      position: absolute;
+      top: -3px; bottom: -3px;
+      width: 3px;
+      pointer-events: none;
+      background: linear-gradient(to bottom,
+        transparent, var(--acc-bri), transparent);
+      box-shadow: 0 0 14px var(--acc-bri), 0 0 4px #fff;
+      opacity: 0.9;
+    }
+    .health:nth-child(1) .health__edge,
+    .health--left .health__edge{
+      left: calc((1 - var(--ratio, 1)) * 100% - 1.5px);
+    }
+    .health:nth-child(2) .health__edge,
+    .health--right .health__edge{
+      left: calc(var(--ratio, 1) * 100% - 1.5px);
+    }
+
+    /* HP number readout */
+    .health__number{
+      font-family: 'JetBrains Mono', monospace;
+      line-height: 1;
+      letter-spacing: 0;
+    }
+    .health__number-cur{
+      font-family: 'Anton', sans-serif;
+      font-size: clamp(22px, 4.6vw, 32px);
+      color: var(--fg);
+      letter-spacing: 0.02em;
+      font-variant-numeric: tabular-nums;
+    }
+    .health__number-max{
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: var(--fg-faint);
+      margin-left: 2px;
+      font-weight: 500;
+    }
+    /* Current-player triangle indicator — sits just outside the bar in the
+       .health padding gutter, pointing inward at the active player's bar. */
+    .health__bar-row{ position: relative; }
+    .health.current.health--left  .health__bar-row::before,
+    .health:nth-child(1).current  .health__bar-row::before{
+      content:"";
+      position: absolute;
+      top: 50%;
+      left: -14px;
+      transform: translateY(-50%);
+      width: 0;
+      height: 0;
+      border-top: 7px solid transparent;
+      border-bottom: 7px solid transparent;
+      border-left: 9px solid var(--acc-bri);
+      filter: drop-shadow(0 0 6px var(--acc));
+      pointer-events: none;
+    }
+    .health.current.health--right .health__bar-row::before,
+    .health:nth-child(2).current  .health__bar-row::before{
+      content:"";
+      position: absolute;
+      top: 50%;
+      right: -14px;
+      transform: translateY(-50%);
+      width: 0;
+      height: 0;
+      border-top: 7px solid transparent;
+      border-bottom: 7px solid transparent;
+      border-right: 9px solid var(--acc-bri);
+      filter: drop-shadow(0 0 6px var(--acc));
+      pointer-events: none;
+    }
+
+    /* Danger state — pulses when <= 25% HP */
+    .health.danger .health__number-cur{
+      color: var(--warn-yel);
+      animation: dangerPulse 0.8s ease-in-out infinite;
+    }
+    .health.danger .health__health{
+      animation: barDanger 0.55s ease-in-out infinite;
+    }
+    @keyframes dangerPulse{
+      0%, 100% { color: var(--warn-yel); }
+      50% { color: var(--hit-red); }
+    }
+    @keyframes barDanger{
+      0%, 100% { filter: brightness(1) saturate(1); }
+      50% { filter: brightness(1.35) saturate(1.5); }
+    }
+
+    /* KO state */
+    .health.ko .health__health{ opacity: 0; }
+    .health.ko .health__number-cur{ color: var(--hit-red); }
+    .health__ko{
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Anton', sans-serif;
+      font-size: clamp(16px, 3vw, 22px);
+      letter-spacing: 0.4em;
+      color: var(--hit-red);
+      text-shadow: 0 0 12px var(--hit-red);
+      animation: koFlash 1s ease-in-out infinite;
+    }
+    @keyframes koFlash{
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    /* ---- VS / combo badge ----
+       In existing hiccup .combo is a sibling of .players (before it).
+       Position it absolutely over the gap.                              */
+    /* Arena wraps .combo + .players so the disc anchors against the bar
+       area's vertical center, independent of toolbar height. */
+    .arena{
+      position: relative;
+    }
+    .combo{
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: clamp(56px, 8vw, 80px);
+      height: clamp(56px, 8vw, 80px);
+      border-radius: 8px;
+      background: var(--surface-2);
+      border: 1.5px solid var(--line-2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 3;
+      transition: background .15s, border-color .15s, transform .15s, box-shadow .15s;
+    }
+    .combo.damage{
+      background: var(--hit-red);
+      border-color: var(--hit-red-bri);
+      color: oklch(0.97 0.01 80);
+      box-shadow: 0 0 28px oklch(0.55 0.22 25 / 0.6);
+      transform: translate(-50%, -50%) scale(1.08);
+    }
+    .combo.healing{
+      background: var(--heal-grn);
+      border-color: oklch(0.86 0.18 155);
+      color: oklch(0.15 0.04 155);
+      box-shadow: 0 0 28px oklch(0.65 0.18 155 / 0.55);
+      transform: translate(-50%, -50%) scale(1.08);
+    }
+    .combo__text{
+      font-family: 'Anton', sans-serif;
+      font-size: clamp(18px, 3.2vw, 28px);
+      letter-spacing: 0.06em;
+      font-variant-numeric: tabular-nums;
+      color: inherit;
+      line-height: 1;
+    }
+    .combo__hits{
+      position: absolute;
+      bottom: -22px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 0.16em;
+      color: var(--fg-mute);
+      white-space: nowrap;
+      text-transform: uppercase;
+    }
+
+    /* In the existing hiccup the .players UL has only li.health children, so
+       the VS marker is a sibling that comes BEFORE .players in source order.
+       Already absolute-positioned above.                                   */
+
+    /* ---- Damage button grid ---- */
+    .damage-buttons{
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: clamp(4px, 0.9vw, 8px);
+      flex: 1;
+      align-content: start;
+    }
+    @container (min-width: 900px){
+      .damage-buttons{ grid-template-columns: repeat(10, 1fr); }
+    }
+    .damage-buttons > li{ display: contents; }
+    .damage-buttons .button{
+      width: 100%;
+      min-height: 48px;
+      padding: 6px;
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 700;
+      font-size: clamp(15px, 2.6vw, 22px);
+      letter-spacing: -0.02em;
+      border-radius: 6px;
+      position: relative;
+    }
+    .heal-tag{
+      position: absolute;
+      top: 2px; right: 5px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 8px;
+      letter-spacing: 0.14em;
+      color: var(--heal-grn);
+      opacity: 0.7;
+    }
+    .button.heal:active .heal-tag{ color: oklch(0.15 0.04 155); opacity: 1; }
+
+    /* Screen-shake hook — existing CLJS doesn't need to know; the wrapper
+       toggles this class for ~180ms whenever a hit is registered.        */
+    .life-counter.shake{
+      animation: screenShake 0.18s cubic-bezier(.36,.07,.19,.97);
+    }
+    @keyframes screenShake{
+      10% { transform: translate(-2px, 1px); }
+      30% { transform: translate(-3px, -1px); }
+      50% { transform: translate(-2px, 1px); }
+      70% { transform: translate(-1px, 1px); }
+      100% { transform: translate(0, 0); }
+    }
+
+    /* Light theme tweaks */
+    html[data-theme="light"] body::before{ display: none; }
+    html[data-theme="light"] .health__health-bar{
+      background: oklch(0.86 0.02 250);
+    }
+    html[data-theme="light"] .health__health-bar::after{ mix-blend-mode: multiply; }
+
+    /* =====================================================================
+       --- RETRO TREATMENT (Synthwave Sunset Grid) ---
+       Single treatment "retro". Apply with data-treatment="retro" on a
+       wrapper above .character-select / .life-counter (or on <html>).
+         · Cosmic-violet body with sunset gradient
+         · Sun-yellow CS panels with chrome-cyan outline + glow
+         · Dark-purple chip surfaces with LIGHT text always
+         · Selected chips use MUTED versions of the cyan/magenta accents,
+           keeping the light text readable
+         · Loud cyan + magenta saved for life-counter accents (bar fills,
+           combo disc, FIGHT button) where the pop belongs
+         · Orbitron geometric type with neon glow, sharp 2px corners
+       ===================================================================== */
+    [data-treatment="retro"] body::before,
+    [data-treatment="retro"]::before{ display: none; }
+
+    /* Sunset-gradient body */
+    [data-treatment="retro"]{
+      background:
+        radial-gradient(ellipse at 50% 105%, rgba(255,63,140,0.30), transparent 50%),
+        radial-gradient(ellipse at 50% -10%, rgba(0,220,255,0.18), transparent 55%),
+        linear-gradient(to bottom, #14063D 0%, #2C0F5E 50%, #4A1A6A 100%);
+
+      /* Token palette */
+      --bg:        #1F0A4F;
+      --bg-2:      #14063D;
+      --surface:   #FFE83A;             /* sun-yellow CS panel */
+      --surface-2: #2A0F5C;             /* dark-purple chip / button surface */
+      --line:      #00DCFF;
+      --line-2:    #00DCFF;
+      --fg:        #F2EAFF;
+      --fg-mute:   #C9B8E8;
+      --fg-faint:  #9082B8;
+
+      --hit-red:   #FF3F8C;
+      --heal-grn:  #50FFD8;
+      --warn-yel:  #FFE83A;
+
+      /* Loud accents — life counter only */
+      --pal-accent:        #FF3F8C;     /* hot magenta (P2 bar, combo damage, FIGHT) */
+      --pal-on-accent:     #FFFFFF;
+      --pal-p1:            #00DCFF;     /* electric cyan (P1 bar) */
+      --pal-on-p1:         #0A0418;
+
+      /* Muted versions — character-select chips, so light text reads */
+      --pal-p1-muted:      #1F5E72;     /* deep teal */
+      --pal-on-p1-muted:   #D2F4FF;     /* pale cyan-white */
+      --pal-accent-muted:  #6E2451;     /* deep wine */
+      --pal-on-accent-muted:#FFE0EE;    /* pale pink-white */
+
+      /* Text-on-surface for non-chip elements (h2, slot, pick name etc. on yellow panel) */
+      --pal-on-surface:    #1F0A4F;     /* deep purple on yellow */
+      --pal-on-surface2:   #F2EAFF;     /* light on dark chip */
+      --pal-on-heal:       #0A2D28;
+      --pal-on-warn:       #1F0A4F;
+      --pal-ink:           #00DCFF;     /* cyan ink for chrome borders */
+
+      /* Effect tokens */
+      --pop-display-font:  'Orbitron', sans-serif;
+      --pop-display-style: normal;
+      --pop-display-weight: 800;
+      --pop-display-tracking: 0.05em;
+      --pop-display-shadow: 0 0 18px currentColor, 0 0 4px rgba(255,255,255,0.4);
+
+      --pop-shadow:         0 0 0 2px var(--pal-ink), 0 0 18px rgba(0,220,255,0.45);
+      --pop-shadow-hover:   0 0 0 2px var(--pal-ink), 0 0 28px rgba(0,220,255,0.7);
+      --pop-shadow-active:  0 0 0 2px var(--pal-ink), 0 0 8px rgba(0,220,255,0.4);
+      --pop-shadow-hot:     0 0 0 2px var(--pal-accent), 0 0 30px rgba(255,63,140,0.7);
+      --pop-active-transform: translate(0, 1px);
+      --pop-hover-transform:  translate(0, -1px);
+      --pop-radius:         2px;
+      --pop-border-width:   2px;
+      --pop-border-color:   var(--pal-ink);
+      --pop-ghost-border:   var(--pal-accent);
+      --pop-edge-glow:      0 0 16px var(--pal-accent);
+      --pop-fill-glow:      0 0 12px var(--pal-accent), inset 0 0 8px rgba(255,255,255,0.2);
+      --pop-header-rule:    var(--pal-accent);
+    }
+
+    /* ─── Per-player accent slots ─── */
+    [data-treatment="retro"] .players > .health:nth-child(1),
+    [data-treatment="retro"] .cs-column--p1{
+      --acc:     var(--pal-p1);
+      --acc-bri: var(--pal-p1);
+      --acc-dim: var(--pal-p1);
+    }
+    [data-treatment="retro"] .players > .health:nth-child(2),
+    [data-treatment="retro"] .cs-column--p2{
+      --acc:     var(--pal-accent);
+      --acc-bri: var(--pal-accent);
+      --acc-dim: var(--pal-accent);
+    }
+
+    /* ─── Typography ─── */
+    [data-treatment="retro"] .character-select h1,
+    [data-treatment="retro"] .cs-start,
+    [data-treatment="retro"] .cs-pick__name,
+    [data-treatment="retro"] .health__name,
+    [data-treatment="retro"] .cs-slot,
+    [data-treatment="retro"] .combo__text,
+    [data-treatment="retro"] .health__ko,
+    [data-treatment="retro"] .list .button,
+    [data-treatment="retro"] .health__number-cur{
+      font-family: var(--pop-display-font);
+      font-weight: var(--pop-display-weight);
+      font-style: var(--pop-display-style, normal);
+      letter-spacing: var(--pop-display-tracking, 0.01em);
+      text-shadow: var(--pop-display-shadow, none);
+    }
+    [data-treatment="retro"] .character-select h1{
+      color: var(--fg);
+      text-shadow: 0 0 24px var(--pal-accent), 0 0 6px rgba(255,255,255,0.5);
+    }
+    [data-treatment="retro"] .cs-tag{ color: var(--fg-mute); }
+    [data-treatment="retro"] .cs-brand-mark{ color: var(--pal-accent); }
+    [data-treatment="retro"] .health__name{
+      text-shadow: 0 0 14px var(--acc), 0 0 4px rgba(255,255,255,0.4);
+    }
+    [data-treatment="retro"] .combo__text{ text-shadow: 0 0 12px currentColor; }
+    [data-treatment="retro"] .health__number-cur{ color: var(--fg); }
+
+    /* ─── Buttons (base) ─── */
+    [data-treatment="retro"] .button{
+      background: var(--surface-2);
+      color: var(--pal-on-surface2);
+      border: var(--pop-border-width) solid var(--pop-border-color);
+      border-radius: var(--pop-radius);
+      box-shadow: var(--pop-shadow);
+      transition: transform .12s ease-out, box-shadow .12s ease-out;
+    }
+    [data-treatment="retro"] .button:hover{
+      transform: var(--pop-hover-transform);
+      box-shadow: var(--pop-shadow-hover);
+    }
+    [data-treatment="retro"] .button:active{
+      transform: var(--pop-active-transform);
+      box-shadow: var(--pop-shadow-active);
+    }
+    [data-treatment="retro"] .button.ghost{
+      background: transparent;
+      color: var(--fg);
+      border-color: var(--pop-ghost-border);
+    }
+    [data-treatment="retro"] .button.activated{
+      background: var(--pal-accent); color: var(--pal-on-accent);
+    }
+    [data-treatment="retro"] .button.ability{
+      background: var(--warn-yel); color: var(--pal-on-warn);
+    }
+    [data-treatment="retro"] .button.heal{
+      background: var(--heal-grn); color: var(--pal-on-heal);
+    }
+    [data-treatment="retro"] .button.heal .heal-tag{ color: inherit; opacity: 0.75; }
+    [data-treatment="retro"] .damage-buttons .button{
+      background: var(--surface-2);
+      color: var(--pal-on-surface2);
+    }
+    [data-treatment="retro"] .damage-buttons .button:active{
+      background: var(--pal-accent);
+      color: var(--pal-on-accent);
+    }
+    /* ── Heal tiles — mint-green glow against the violet body ──
+       More specific than the generic damage-button rule above so this wins.
+       Surface is a deep-mint chip with bright mint-green text + glow border;
+       on press it inverts to the loud mint fill.                         */
+    [data-treatment="retro"] .damage-buttons .button.heal{
+      background: #0E3329;                      /* deep mint chip */
+      color: var(--heal-grn);                   /* bright mint text */
+      border-color: var(--heal-grn);
+      box-shadow:
+        0 0 0 2px var(--heal-grn),
+        0 0 18px rgba(80,255,216,0.45);
+      text-shadow: 0 0 12px rgba(80,255,216,0.9);
+    }
+    [data-treatment="retro"] .damage-buttons .button.heal:hover{
+      background: #145446;
+      box-shadow:
+        0 0 0 2px var(--heal-grn),
+        0 0 28px rgba(80,255,216,0.7);
+    }
+    [data-treatment="retro"] .damage-buttons .button.heal:active{
+      background: var(--heal-grn);
+      color: var(--pal-on-heal);
+      text-shadow: none;
+      box-shadow:
+        0 0 0 2px var(--heal-grn),
+        0 0 32px rgba(80,255,216,0.9);
+    }
+    [data-treatment="retro"] .damage-buttons .button.heal .heal-tag{
+      color: var(--heal-grn);
+      opacity: 0.85;
+      text-shadow: none;
+    }
+    [data-treatment="retro"] .damage-buttons .button.heal:active .heal-tag{
+      color: var(--pal-on-heal);
+      opacity: 1;
+    }
+
+    /* ─── Health bar (life counter — uses LOUD accents) ─── */
+    [data-treatment="retro"] .health__health-bar{
+      background: var(--surface-2);
+      border: var(--pop-border-width) solid var(--pop-border-color);
+      border-radius: var(--pop-radius);
+      box-shadow: var(--pop-shadow);
+      height: clamp(26px, 3.6vw, 36px);
+    }
+    [data-treatment="retro"] .health__health-bar::after{ display: none; }
+    [data-treatment="retro"] .health__damage{
+      background: repeating-linear-gradient(
+        45deg,
+        var(--pal-accent) 0 8px,
+        color-mix(in srgb, var(--pal-accent) 60%, var(--pal-ink)) 8px 16px);
+      box-shadow: none;
+    }
+    [data-treatment="retro"] .players > .health:nth-child(1) .health__health{
+      background: var(--pal-p1); box-shadow: var(--pop-fill-glow);
+    }
+    [data-treatment="retro"] .players > .health:nth-child(2) .health__health{
+      background: var(--pal-accent); box-shadow: var(--pop-fill-glow);
+    }
+    [data-treatment="retro"] .health__edge{
+      background: var(--pal-ink);
+      box-shadow: var(--pop-edge-glow);
+      opacity: 1; width: 3px;
+    }
+
+    /* ─── Combo disc ─── */
+    [data-treatment="retro"] .combo{
+      background: var(--surface-2);
+      color: var(--pal-on-surface2);
+      border: var(--pop-border-width) solid var(--pop-border-color);
+      border-radius: 999px;
+      box-shadow: var(--pop-shadow);
+    }
+    [data-treatment="retro"] .combo.damage{
+      background: var(--pal-accent); color: var(--pal-on-accent);
+      box-shadow: var(--pop-shadow-hot);
+    }
+    [data-treatment="retro"] .combo.healing{
+      background: var(--heal-grn); color: var(--pal-on-heal);
+    }
+
+    /* ─── Character-select panels ─── */
+    [data-treatment="retro"] .cs-header{
+      border-bottom: var(--pop-border-width) solid var(--pop-header-rule);
+    }
+    [data-treatment="retro"] .cs-column{
+      background: var(--surface);
+      color: var(--pal-on-surface);
+      border: var(--pop-border-width) solid var(--pop-border-color);
+      border-radius: var(--pop-radius);
+      box-shadow:
+        0 0 0 2px var(--pal-ink),
+        0 0 24px rgba(255,232,58,0.35),
+        0 0 60px rgba(0,220,255,0.25);
+    }
+    [data-treatment="retro"] .cs-column::before{
+      width: 6px;
+      background: var(--acc, var(--pal-accent));
+    }
+    /* Panel-level text on YELLOW surface — keep deep purple ink */
+    [data-treatment="retro"] .cs-column h2,
+    [data-treatment="retro"] .cs-slot,
+    [data-treatment="retro"] .cs-pick__name,
+    [data-treatment="retro"] .cs-pick__hp,
+    [data-treatment="retro"] .cs-pick__empty,
+    [data-treatment="retro"] .cs-column .player-panel__hint{
+      color: var(--pal-on-surface);
+    }
+    [data-treatment="retro"] .cs-pick__hp{ opacity: 0.65; }
+
+    /* Dark-on-light text (deep purple on the yellow panel) must NOT glow —
+       the neon halo only reads on light-on-dark. Strip the display shadow
+       from panel-level elements that sit on the yellow surface.          */
+    [data-treatment="retro"] .cs-slot,
+    [data-treatment="retro"] .cs-pick__name,
+    [data-treatment="retro"] .cs-column h2{
+      text-shadow: none;
+    }
+
+    /* Inactive chip text — LIGHT on dark chip bg.
+       char-name + char-hp inherit from .button (--pal-on-surface2 = light). */
+    [data-treatment="retro"] .list .button .char-name,
+    [data-treatment="retro"] .list .button .char-hp{
+      color: inherit;
+    }
+    [data-treatment="retro"] .list .button .char-hp{ opacity: 0.55; }
+
+    /* Selected chips — MUTED background, light text still reads through. */
+    [data-treatment="retro"] .cs-column--p1 .button.selected{
+      background: var(--pal-p1-muted);
+      color: var(--pal-on-p1-muted);
+      border-color: var(--pal-p1);                   /* loud cyan border = selection cue */
+      box-shadow:
+        0 0 0 2px var(--pal-p1),
+        0 0 18px rgba(0,220,255,0.55);
+    }
+    [data-treatment="retro"] .cs-column--p2 .button.selected{
+      background: var(--pal-accent-muted);
+      color: var(--pal-on-accent-muted);
+      border-color: var(--pal-accent);               /* loud magenta border = selection cue */
+      box-shadow:
+        0 0 0 2px var(--pal-accent),
+        0 0 18px rgba(255,63,140,0.55);
+    }
+    [data-treatment="retro"] .cs-column--p1 .button.selected .char-hp,
+    [data-treatment="retro"] .cs-column--p2 .button.selected .char-hp{
+      color: inherit;
+      opacity: 0.7;
+    }
+
+    /* EX badges */
+    [data-treatment="retro"] .cs-pick__ex,
+    [data-treatment="retro"] .health__ex{
+      background: var(--warn-yel);
+      color: var(--pal-on-warn);
+      border: 1px solid var(--pal-ink);
+    }
+    [data-treatment="retro"] .list .button.selected.ex{
+      box-shadow:
+        0 0 0 3px var(--warn-yel),
+        var(--pop-shadow);
+    }
+
+    /* Start / FIGHT button */
+    [data-treatment="retro"] .cs-start{
+      background: var(--surface-2);
+      color: var(--pal-on-surface2);
+      border: var(--pop-border-width) solid var(--pop-border-color);
+      border-radius: var(--pop-radius);
+      box-shadow: var(--pop-shadow);
+    }
+    [data-treatment="retro"] .cs-start.ready{
+      background: var(--pal-accent);
+      color: var(--pal-on-accent);
+      box-shadow: var(--pop-shadow-hot);
+      text-shadow: 0 0 18px rgba(255,255,255,0.6);
+    }
+    [data-treatment="retro"] .cs-start[disabled]{ opacity: 0.55; }
+
+
+    /* =====================================================================
+       CHARACTER SELECT — single-grid state-machine layout (overrides the
+       earlier two-column rules; the .cs-column hooks are kept for backwards
+       compatibility but no markup uses them anymore).
+       ===================================================================== */
+
+    /* Compact picks row above the chip grid. */
+    .cs-picks{
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    .cs-pick{
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 10px 12px;
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      position: relative;
+      overflow: hidden;
+      min-height: 44px;
+    }
+    .cs-pick::before{
+      content:"";
+      position: absolute; left: 0; top: 0; bottom: 0;
+      width: 3px;
+      background: var(--acc, var(--line));
+    }
+    .cs-pick--p1{
+      --acc:      oklch(0.72 0.18 var(--p1-hue));
+      --acc-bri:  oklch(0.84 0.18 var(--p1-hue));
+      --acc-hue:  var(--p1-hue);
+    }
+    .cs-pick--p2{
+      --acc:      oklch(0.72 0.16 var(--p2-hue));
+      --acc-bri:  oklch(0.86 0.16 var(--p2-hue));
+      --acc-hue:  var(--p2-hue);
+    }
+    .cs-pick__slot{
+      font-family: 'Anton', sans-serif;
+      font-size: 18px;
+      color: var(--acc);
+      letter-spacing: 0.06em;
+      line-height: 1;
+      flex-shrink: 0;
+    }
+    .cs-pick__body{
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      min-width: 0;
+      flex: 1;
+    }
+    .cs-pick__body .cs-pick__name{ color: var(--acc-bri); }
+
+    /* Per-chip player coloring (replaces the old .cs-column--pN scope). */
+    .list .button.selected.p1{
+      --acc:      oklch(0.72 0.18 var(--p1-hue));
+      --acc-bri:  oklch(0.84 0.18 var(--p1-hue));
+      --acc-hue:  var(--p1-hue);
+    }
+    .list .button.selected.p2{
+      --acc:      oklch(0.72 0.16 var(--p2-hue));
+      --acc-bri:  oklch(0.86 0.16 var(--p2-hue));
+      --acc-hue:  var(--p2-hue);
+    }
+
+    /* Actions row: Reset + Fight side by side. */
+    .cs-actions{
+      margin-top: auto;
+      display: flex;
+      gap: 8px;
+      align-items: stretch;
+    }
+    .cs-actions .cs-start{
+      flex: 1;
+      margin-top: 0;
+    }
+    .cs-reset{
+      flex: 0 0 auto;
+      padding: 18px 22px;
+      font-family: 'Anton', sans-serif;
+      font-size: clamp(14px, 3.2vw, 18px);
+      letter-spacing: 0.16em;
+      border-radius: 10px;
+      background: transparent;
+      border: 1px solid var(--line-2);
+      color: var(--fg-mute);
+      text-transform: uppercase;
+      min-height: 64px;
+    }
+    .cs-reset:hover{ background: var(--surface-2); border-color: var(--line-2); }
+    .cs-reset[disabled]{ opacity: 0.35; cursor: not-allowed; }
+
+    /* Retro overrides */
+    [data-treatment="retro"] .cs-pick{
+      background: var(--surface);
+      color: var(--pal-on-surface);
+      border: var(--pop-border-width) solid var(--pop-border-color);
+      border-radius: var(--pop-radius);
+      box-shadow:
+        0 0 0 2px var(--pal-ink),
+        0 0 16px rgba(0,220,255,0.25);
+    }
+    [data-treatment="retro"] .cs-pick--p1{
+      --acc:     var(--pal-p1);
+      --acc-bri: var(--pal-p1);
+    }
+    [data-treatment="retro"] .cs-pick--p2{
+      --acc:     var(--pal-accent);
+      --acc-bri: var(--pal-accent);
+    }
+    [data-treatment="retro"] .cs-pick::before{
+      width: 6px;
+      background: var(--acc);
+    }
+    [data-treatment="retro"] .cs-pick__slot,
+    [data-treatment="retro"] .cs-pick__name,
+    [data-treatment="retro"] .cs-pick__hp,
+    [data-treatment="retro"] .cs-pick__empty{
+      color: var(--pal-on-surface);
+    }
+    [data-treatment="retro"] .cs-pick__slot{ color: var(--acc); }
+    [data-treatment="retro"] .cs-pick__hp{ opacity: 0.65; }
+    [data-treatment="retro"] .cs-pick__name{
+      font-family: var(--pop-display-font);
+      font-weight: var(--pop-display-weight);
+    }
+
+    [data-treatment="retro"] .list .button.selected.p1{
+      background: var(--pal-p1-muted);
+      color: var(--pal-on-p1-muted);
+      border-color: var(--pal-p1);
+      box-shadow:
+        0 0 0 2px var(--pal-p1),
+        0 0 18px rgba(0,220,255,0.55);
+    }
+    [data-treatment="retro"] .list .button.selected.p2{
+      background: var(--pal-accent-muted);
+      color: var(--pal-on-accent-muted);
+      border-color: var(--pal-accent);
+      box-shadow:
+        0 0 0 2px var(--pal-accent),
+        0 0 18px rgba(255,63,140,0.55);
+    }
+    [data-treatment="retro"] .list .button.selected.p1 .char-hp,
+    [data-treatment="retro"] .list .button.selected.p2 .char-hp{
+      color: inherit;
+      opacity: 0.7;
+    }
+
+    [data-treatment="retro"] .cs-reset{
+      background: transparent;
+      color: var(--pal-ink);
+      border: var(--pop-border-width) solid var(--pop-ghost-border);
+      border-radius: var(--pop-radius);
+      box-shadow: 0 0 0 2px var(--pop-ghost-border), 0 0 18px rgba(255,63,140,0.35);
+    }
+    [data-treatment="retro"] .cs-reset:hover{
+      box-shadow: 0 0 0 2px var(--pop-ghost-border), 0 0 26px rgba(255,63,140,0.5);
+    }
+    [data-treatment="retro"] .cs-reset[disabled]{ opacity: 0.5; }

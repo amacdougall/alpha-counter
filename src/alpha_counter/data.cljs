@@ -143,13 +143,15 @@
      :running-total running-total
      :damage damage}))
 
-;; Resets character selection and returns to the character screen.
+;; Returns to the character-select screen in the Initial state (no picks).
 (defn return-to-character-select! []
   (om/transact! (app-cursor)
     (fn [app]
       (assoc app
              :characters-selected false
-             :running-total 0))))
+             :running-total 0
+             :players (mapv (fn [p] (dissoc p :character :ex))
+                            (:players app))))))
 
 ;; Returns a channel hash appropriate for the channels atom.
 (defn- build-channels [{:keys [players]}]
@@ -183,6 +185,31 @@
   (if (= (:character player) character)
     (om/update! player [:ex] (not (:ex player)))
     (om/transact! player #(assoc % :character character, :ex false))))
+
+;; Returns picks to the initial (no-character-selected) state.
+(defn reset-picks! [app]
+  (om/transact! app
+    #(assoc % :players (mapv (fn [p] (dissoc p :character :ex))
+                             (:players %)))))
+
+;; Single-grid character-select click handler. Dispatches based on the
+;; current pick state:
+;;   - no picks       → assign to P1
+;;   - P1 only        → toggle EX if same character, else assign to P2
+;;   - both picked    → toggle EX on whichever player owns the chip
+;;                      (clicks on unowned chips are no-ops)
+(defn select-character! [app character]
+  (let [[p1 p2] (:players app)
+        c1 (:character p1)
+        c2 (:character p2)
+        same-as-p1? (= c1 character)
+        same-as-p2? (= c2 character)]
+    (cond
+      (nil? c1) (choose-character p1 character)
+      (nil? c2) (choose-character (if same-as-p1? p1 p2) character)
+      same-as-p1? (choose-character p1 character)
+      same-as-p2? (choose-character p2 character)
+      :else nil)))
 
 (defn chosen? [character-name]
   (let [players (:players @app-state)
